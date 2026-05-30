@@ -1,0 +1,25 @@
+
+> additive-eyewear@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 584ms
+
+○ Compiling /pipelines/[id] ...
+ GET /pipelines/123 200 in 8.2s (next.js: 7.6s, application-code: 654ms)
+ GET /pipelines/123 200 in 100ms (next.js: 27ms, application-code: 73ms)
+TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: Client network socket disconnected before secure TLS connection was established
+      at ignore-listed frames {
+    code: 'ECONNRESET',
+    path: undefined,
+    host: 'via.placeholder.com',
+    port: 443,
+    localAddress: null
+  }
+}
+ GET /_next/image?url=https%3A%2F%2Fvia.placeholder.com%2F400x400&w=1920&q=75 500 in 1645ms (next.js: 1591ms, application-code: 53ms)
+ GET /_next/image?url=https%3A%2F%2Fvia.placeholder.com%2F400x400&w=1920&q=75 500 in 1645ms (next.js: 1591ms, application-code: 54ms)
