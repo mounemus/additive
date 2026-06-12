@@ -39,3 +39,5 @@ yarn-error.log*
 *.wpress
 *.wprime
 /Ultra_realistic_cinematic_prod.mp4
+
+.vercel

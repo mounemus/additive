@@ -1,0 +1,9 @@
+_source
+additive-eyewear-configurator
+additive-flatsome-child
+dist
+*.wpress
+*.wprime
+Ultra_realistic_cinematic_prod.mp4
+.next
+node_modules

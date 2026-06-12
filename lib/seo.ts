@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
 
 export const SITE_NAME = "ADDITIVE";
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+function sanitizeUrl(raw: string | undefined): string {
+  const fallback = "http://localhost:3000";
+  if (!raw) return fallback;
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  try {
+    new URL(trimmed);
+    return trimmed;
+  } catch {
+    return fallback;
+  }
+}
+
+export const SITE_URL = sanitizeUrl(process.env.NEXT_PUBLIC_SITE_URL);
 
 const DEFAULT_DESCRIPTION =
   "ADDITIVE — Lunetterie modulaire imprimée en 3D à Montréal. Des lunettes générées pour votre visage, imprimées pour votre style. Design paramétrique, nylon PA12, personnalisation morphologique.";
