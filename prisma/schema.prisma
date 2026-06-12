@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  shortDescription String?
+  description      String?
+  price            Float?
+  currency         String         @default("CAD")
+  collectionId     String?
+  collection       Collection?    @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  images           ProductImage[]
+  colors           String[]
+  materials        String[]
+  dimensions       String?
+  features         String[]
+  customizable     Boolean        @default(true)
+  isFeatured       Boolean        @default(false)
+  isPublished      Boolean        @default(false)
+  seoTitle         String?
+  seoDescription   String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model Collection {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  description    String?
+  tagline        String?
+  image          String?
+  video          String?
+  products       Product[]
+  order          Int       @default(0)
+  isPublished    Boolean   @default(false)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String
+  alt       String?
+  order     Int     @default(0)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ContactRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  type      String?
+  message   String
+  status    String   @default("new")
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+// Demande issue du configurateur "Créer mes lunettes".
+// Reprend les principes du plugin WordPress : profil de style en tags,
+// concept choisi parmi 3 propositions max, estimation recalculée serveur.
+model CustomizationRequest {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  faceShape      String?
+  styleTags      String[]
+  boldness       String?
+  conceptLabel   String?
+  conceptSummary String?
+  options        Json?
+  estimatedPrice Float?
+  currency       String   @default("CAD")
+  message        String?
+  status         String   @default("new")
+  note           String?
+  createdAt      DateTime @default(now())
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  kind      String   @default("image")
+  createdAt DateTime @default(now())
+}
+
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}

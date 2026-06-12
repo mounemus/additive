@@ -1,0 +1,129 @@
+import { notFound } from "next/navigation";
+import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
+import { ProductGallery } from "@/components/product/product-gallery";
+import { ProductDetails } from "@/components/product/product-details";
+import { ProductGrid } from "@/components/product/product-grid";
+import { FadeIn } from "@/components/motion/fade-in";
+import { AnimatedText } from "@/components/motion/animated-text";
+import { CTASection } from "@/components/sections/cta-section";
+import { getProduct, getRelatedProducts } from "@/lib/catalog";
+import { buildMetadata } from "@/lib/seo";
+import type { Metadata } from "next";
+
+export const dynamic = "force-dynamic";
+
+const WHY_POINTS = [
+  {
+    icon: Feather,
+    title: "Légèreté réelle",
+    body: "Environ 18 g sur le nez : le nylon PA12 fritté permet d’alléger la structure sans la fragiliser.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Robustesse mémoire",
+    body: "Flexible et doté d’une excellente mémoire de forme, il retrouve sa géométrie après torsion.",
+  },
+  {
+    icon: Sparkles,
+    title: "Personnalisable",
+    body: "Cette monture peut servir de base à une personnalisation complète : forme, couleur, branches, verres.",
+  },
+  {
+    icon: Leaf,
+    title: "Produite à la demande",
+    body: "Aucun stock, aucun invendu : votre paire est imprimée après votre commande, à Montréal.",
+  },
+];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const product = await getProduct(params.slug);
+  if (!product) return buildMetadata({ title: "Modèle" });
+  return buildMetadata({
+    title: product.seoTitle ?? product.name,
+    description: product.seoDescription ?? product.shortDescription ?? undefined,
+    path: `/produits/${product.slug}`,
+    image: product.image,
+  });
+}
+
+export default async function ProductPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const product = await getProduct(params.slug);
+  if (!product) notFound();
+
+  const related = await getRelatedProducts(product);
+
+  return (
+    <>
+      <section className="pb-20 pt-32 md:pt-40">
+        <div className="container grid gap-12 lg:grid-cols-[1.15fr_1fr]">
+          <FadeIn y={16}>
+            <ProductGallery images={product.images} name={product.name} />
+          </FadeIn>
+          <FadeIn y={16} delay={0.1}>
+            <ProductDetails product={product} />
+          </FadeIn>
+        </div>
+      </section>
+
+      {product.description && (
+        <section className="border-t border-border py-20">
+          <div className="container grid gap-10 lg:grid-cols-[1fr_1.5fr]">
+            <h2 className="font-display text-display-md font-bold">
+              L’histoire du design
+            </h2>
+            <FadeIn>
+              <p className="text-lg leading-relaxed text-muted">
+                {product.description}
+              </p>
+            </FadeIn>
+          </div>
+        </section>
+      )}
+
+      <section className="section-dark py-20 md:py-28">
+        <div className="container">
+          <AnimatedText
+            text="Pourquoi cette monture ?"
+            className="font-display text-display-md font-bold"
+          />
+          <div className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+            {WHY_POINTS.map((point) => (
+              <div key={point.title} className="bg-surface p-7">
+                <point.icon className="h-6 w-6 text-accent-blue" />
+                <h3 className="mt-4 font-display font-semibold">{point.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {point.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {related.length > 0 && (
+        <section className="py-20 md:py-28">
+          <div className="container">
+            <h2 className="mb-10 font-display text-display-md font-bold">
+              Vous aimerez aussi
+            </h2>
+            <ProductGrid products={related} />
+          </div>
+        </section>
+      )}
+
+      <CTASection
+        title={`Faites de ${product.name} votre point de départ.`}
+        button="Personnaliser ce modèle"
+        href={`/personnalisation?base=${product.slug}`}
+      />
+    </>
+  );
+}
