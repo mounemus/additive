@@ -84,11 +84,8 @@ export function FaceTryon({
       const H = (canvas.height = video.videoHeight);
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        // Vidéo en miroir (selfie).
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(video, -W, 0, W, H);
-        ctx.restore();
+        // Vue NON miroir : même orientation que la réalité / le portrait porté.
+        ctx.drawImage(video, 0, 0, W, H);
 
         let result: any = null;
         try {
@@ -113,7 +110,8 @@ export function FaceTryon({
           }
         } else if (frame) {
           noFaceRef.current = 0;
-          const p = (i: number) => ({ x: W - landmarks[i].x * W, y: landmarks[i].y * H });
+          // Coordonnées directes (pas de miroir).
+          const p = (i: number) => ({ x: landmarks[i].x * W, y: landmarks[i].y * H });
           const tL = p(234);
           const tR = p(454);
           const eL = p(33);

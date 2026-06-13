@@ -263,7 +263,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     fetch("/api/configurator/frame-overlay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conceptLabel: selected.label, styleTags: profile }),
+      body: JSON.stringify({ conceptLabel: selected.label, styleTags: profile, conceptImage: selected.image }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setOverlay({ image: data.image, bg: data.bg }))

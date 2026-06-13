@@ -11,6 +11,7 @@ import { generateFrameOverlay } from "@/lib/ai/image-provider";
 const schema = z.object({
   conceptLabel: z.string().max(120),
   styleTags: z.array(z.string().max(40)).max(8).default([]),
+  conceptImage: z.string().max(8_000_000).optional(),
 });
 
 /**
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
   if (!concept) return NextResponse.json({ error: "unknown_concept" }, { status: 422 });
 
   const prompt = buildFrameOverlayPromptFr(concept, styleTags);
-  const result = await generateFrameOverlay({ prompt });
+  const result = await generateFrameOverlay({ prompt, conceptImage: parsed.data.conceptImage });
   if (!result.ok) return NextResponse.json({ error: "unavailable" }, { status: 503 });
 
   return NextResponse.json({ image: result.dataUrl, bg: result.bg });

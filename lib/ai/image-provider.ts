@@ -223,16 +223,23 @@ async function openaiEdit(
  */
 export async function generateFrameOverlay(opts: {
   prompt: string;
+  conceptImage?: string;
 }): Promise<{ ok: true; dataUrl: string; bg: "transparent" | "white" } | { ok: false }> {
   const { provider } = await getTaskConfig("frameOverlay");
-  const order = provider === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+  // Avec l'image du concept, Gemini la reproduit fidèlement (OpenAI
+  // /generations ne prend pas d'image en entrée) → Gemini en tête.
+  const order = opts.conceptImage
+    ? ["gemini", "openai"]
+    : provider === "gemini"
+      ? ["gemini", "openai"]
+      : ["openai", "gemini"];
 
   for (const p of order) {
     if (p === "openai") {
       const r = await overlayOpenAI(opts.prompt);
       if (r) return r;
     } else {
-      const r = await overlayGemini(opts.prompt);
+      const r = await overlayGemini(opts.prompt, opts.conceptImage);
       if (r) return r;
     }
   }
@@ -270,16 +277,17 @@ async function overlayOpenAI(
 }
 
 async function overlayGemini(
-  prompt: string
+  prompt: string,
+  conceptImage?: string
 ): Promise<{ ok: true; dataUrl: string; bg: "white" } | null> {
   const key = await getProviderKey("gemini");
   if (!key) return null;
-  const r = await geminiGenerate(
-    `${prompt} Fond blanc pur uni #FFFFFF, sans ombre, sans décor.`,
-    [],
-    key,
-    "gemini-2.5-flash-image"
-  );
+  const refs = conceptImage && conceptImage.startsWith("data:") ? [conceptImage] : [];
+  // Avec l'image du concept : reproduire EXACTEMENT la monture (fidélité AR).
+  const fullPrompt = conceptImage
+    ? `${prompt} Reproduis EXACTEMENT la monture montrée dans l'image de référence — même forme, même épaisseur, même couleur, même matière. Vue strictement de face, façade seule (branches coupées aux charnières), cadrage bord à bord. Fond blanc pur uni #FFFFFF, sans ombre portée.`
+    : `${prompt} Fond blanc pur uni #FFFFFF, sans ombre, sans décor.`;
+  const r = await geminiGenerate(fullPrompt, refs, key, "gemini-2.5-flash-image");
   if (r.ok) return { ok: true, dataUrl: r.dataUrl, bg: "white" };
   return null;
 }
