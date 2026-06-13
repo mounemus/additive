@@ -1,0 +1,57 @@
+import { NextResponse } from "next/server";
+import { conceptsGenSchema } from "@/lib/validations";
+import {
+  buildConcepts,
+  buildConceptPromptFr,
+  profilePalette,
+  type StyleTag,
+  type FaceShape,
+  type Boldness,
+} from "@/lib/configurator";
+import { generateImage } from "@/lib/ai/image-provider";
+import { demoConceptSvg } from "@/lib/ai/demo-visuals";
+
+/**
+ * Génère 3 concepts MAXIMUM, cohérents avec le moodboard (même palette/matière)
+ * et adaptés à la morphologie. Les données (label, notes, scores d'imprimabilité
+ * et de correspondance) viennent du moteur déterministe ; l'image vient de l'IA
+ * si configurée (conditionnée sur le moodboard), sinon d'un rendu SVG de démo.
+ * Les meilleurs taux de correspondance sont renvoyés en tête.
+ */
+export async function POST(req: Request) {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  const parsed = conceptsGenSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "validation" }, { status: 422 });
+
+  const styleTags = parsed.data.styleTags as StyleTag[];
+  const faceShape = (parsed.data.faceShape as FaceShape) ?? null;
+  const boldness = parsed.data.boldness as Boldness;
+  const palette = profilePalette(styleTags);
+  const moodboard = parsed.data.moodboardImage;
+
+  const concepts = buildConcepts(faceShape, styleTags, boldness);
+
+  // Génère les visuels en parallèle (chaque concept conditionné sur le moodboard).
+  const enriched = await Promise.all(
+    concepts.map(async (concept, i) => {
+      const prompt = buildConceptPromptFr(concept, styleTags, faceShape);
+      const result = await generateImage({
+        prompt,
+        referenceImages: moodboard ? [moodboard] : undefined,
+        size: "1024x1024",
+      });
+      const image = result.ok
+        ? result.dataUrl
+        : demoConceptSvg(concept.label, palette.colors, 3 + i);
+      return { ...concept, image, ai: result.ok };
+    })
+  );
+
+  return NextResponse.json({ concepts: enriched });
+}

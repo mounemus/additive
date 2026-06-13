@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { customizationRequestSchema } from "@/lib/validations";
-import { computeEstimate } from "@/lib/configurator";
-import { estimateSchema } from "@/lib/validations";
+import { customizationRequestSchema, quoteOptionsSchema } from "@/lib/validations";
+import { computeQuote } from "@/lib/configurator";
+import { getPricingConfig } from "@/lib/configurator-settings";
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -23,14 +23,14 @@ export async function POST(req: Request) {
   // Le prix est TOUJOURS recalculé côté serveur à partir des options brutes —
   // jamais accepté tel quel depuis le client (principe hérité du plugin).
   let estimatedPrice: number | null = null;
-  const estimateInput = estimateSchema.safeParse({
+  const optionInput = quoteOptionsSchema.safeParse({
     conceptLabel: parsed.data.conceptLabel,
     boldness: parsed.data.boldness,
-    lensType: parsed.data.options?.lensType,
-    finish: parsed.data.options?.finish,
+    ...(parsed.data.options ?? {}),
   });
-  if (estimateInput.success) {
-    estimatedPrice = computeEstimate(estimateInput.data).total;
+  if (optionInput.success) {
+    const pricing = await getPricingConfig();
+    estimatedPrice = computeQuote(optionInput.data, pricing).total;
   }
 
   try {
@@ -40,16 +40,22 @@ export async function POST(req: Request) {
         email: parsed.data.email,
         phone: parsed.data.phone || null,
         faceShape: parsed.data.faceShape ?? null,
+        measurements: (parsed.data.measurements as object) ?? undefined,
+        analysisReport: (parsed.data.analysisReport as object) ?? undefined,
         styleTags: parsed.data.styleTags,
         boldness: parsed.data.boldness ?? null,
         conceptLabel: parsed.data.conceptLabel ?? null,
         conceptSummary: parsed.data.conceptSummary ?? null,
-        options: parsed.data.options ?? undefined,
+        conceptData: (parsed.data.conceptData as object) ?? undefined,
+        matchRate: parsed.data.matchRate ?? null,
+        moodboardUrl: parsed.data.moodboardUrl ?? null,
+        options: (parsed.data.options as object) ?? undefined,
         estimatedPrice,
+        photoToken: parsed.data.photoToken ?? null,
         message: parsed.data.message || null,
       },
     });
-    return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
+    return NextResponse.json({ ok: true, id: created.id, estimatedPrice }, { status: 201 });
   } catch (e) {
     console.error("[customization] persistence error:", e);
     return NextResponse.json({ error: "unavailable" }, { status: 503 });

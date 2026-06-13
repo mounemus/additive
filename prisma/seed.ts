@@ -7,6 +7,11 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { COLLECTIONS, PRODUCTS, SITE_CONTENT } from "../content/static-data";
+import {
+  DEFAULT_PRICING,
+  DEFAULT_PROVIDERS,
+  DEFAULT_CONSENT_TEXT,
+} from "../content/configurator-defaults";
 
 const db = new PrismaClient();
 
@@ -88,6 +93,20 @@ async function main() {
     await db.siteContent.upsert({
       where: { key },
       update: { value: value as object },
+      create: { key, value: value as object },
+    });
+  }
+
+  console.log("→ Seed des réglages du configurateur…");
+  const configuratorDefaults: Record<string, unknown> = {
+    "configurator.pricing": DEFAULT_PRICING,
+    "configurator.providers": DEFAULT_PROVIDERS,
+    "configurator.consent": DEFAULT_CONSENT_TEXT,
+  };
+  for (const [key, value] of Object.entries(configuratorDefaults)) {
+    await db.siteContent.upsert({
+      where: { key },
+      update: {}, // ne pas écraser une config admin existante
       create: { key, value: value as object },
     });
   }

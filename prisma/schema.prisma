@@ -71,24 +71,42 @@ model ContactRequest {
 
 // Demande issue du configurateur "Créer mes lunettes".
 // Reprend les principes du plugin WordPress : profil de style en tags,
-// concept choisi parmi 3 propositions max, estimation recalculée serveur.
+// concept choisi parmi 3 propositions max, prix recalculé serveur,
+// + analyse morphologique, mesures mm, moodboard et photo temporaire.
 model CustomizationRequest {
   id             String   @id @default(cuid())
   name           String
   email          String
   phone          String?
   faceShape      String?
+  measurements   Json?     // mesures mm (PD, largeur visage, pont nasal…)
+  analysisReport Json?     // rapport + recommandations de chausse
   styleTags      String[]
   boldness       String?
   conceptLabel   String?
   conceptSummary String?
-  options        Json?
+  conceptData    Json?     // concept choisi complet (notes, scores…)
+  matchRate      Int?      // taux de correspondance du concept (0–100)
+  moodboardUrl   String?
+  options        Json?     // matériau, finition, verres, livraison, urgence
   estimatedPrice Float?
   currency       String   @default("CAD")
+  photoToken     String?   // référence vers la photo temporaire (TempPhoto)
   message        String?
   status         String   @default("new")
   note           String?
   createdAt      DateTime @default(now())
+}
+
+// Photo temporaire (capture/essayage/portrait) — confidentialité d'abord :
+// purgée automatiquement après expiration, supprimable à la demande via token.
+model TempPhoto {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  dataUrl   String   // image encodée (data URL) — jamais d'identité analysée
+  kind      String   @default("capture") // capture | snapshot | portrait
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }
 
 model MediaAsset {

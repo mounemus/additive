@@ -1,18 +1,26 @@
 "use client";
 
 /**
- * Configurateur "Créer ma monture" — portage des principes du plugin
- * WordPress "ADDITIVE Créer mes lunettes" :
- *  - parcours par étapes avec consentement explicite avant tout traitement ;
- *  - questionnaire de style indirect converti en tags esthétiques ;
- *  - 3 concepts maximum, triés par score d'imprimabilité décroissant ;
- *  - estimation TOUJOURS recalculée côté serveur (/api/configurator/estimate) ;
- *  - aucun nom de fournisseur d'IA exposé côté client ;
- *  - architecture prête pour les modules futurs : analyse faciale live,
- *    moodboard génératif, essayage AR, aperçu 3D.
+ * Configurateur "Créer ma monture" — pipeline complet, portage des principes
+ * du plugin WordPress "ADDITIVE Créer mes lunettes" :
+ *
+ *  1. Consentement explicite (texte admin) + « Supprimer ma photo » permanent.
+ *  2. Capture (caméra ou upload).
+ *  3. Analyse faciale en direct (MediaPipe 478 landmarks, mesures mm calibrées
+ *     iris) → forme du visage + rapport de chausse.
+ *  4. Diagnostic de style indirect → profil de tags.
+ *  5. Moodboard éditorial (IA si configurée, sinon SVG cohérent).
+ *  6. 3 concepts cohérents avec le moodboard, scores d'imprimabilité +
+ *     correspondance, meilleurs en tête.
+ *  7. Essayage : vue studio (rendu du concept) + essayage caméra superposé +
+ *     capture + portrait porté (identité préservée).
+ *  8. Prix recalculé serveur + ajout au panier/atelier avec toutes les données.
+ *
+ * Confidentialité d'abord ; aucun nom de fournisseur d'IA exposé.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -21,71 +29,137 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
-  ScanFace,
-  Camera,
-  Box,
+  Trash2,
   Wand2,
+  Camera,
+  Ruler,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Lightbox } from "@/components/ui/lightbox";
+import { FaceScanner, type ScanResult } from "@/components/configurator/face-scanner";
+import { FaceTryon } from "@/components/configurator/face-tryon";
 import { cn } from "@/lib/utils";
 import {
   STEP_ORDER,
   STEP_LABELS,
-  FACE_SHAPES,
   STYLE_QUESTIONS,
   BOLDNESS_LEVELS,
+  FACE_SHAPES,
   TAG_LABELS,
   answersToProfile,
-  buildConcepts,
+  profilePalette,
   type ConfiguratorStep,
-  type FaceShape,
   type Boldness,
-  type Concept,
+  type StyleTag,
 } from "@/lib/configurator";
+import { MEASUREMENT_LABELS, type FaceMeasurements } from "@/lib/face/face-analysis";
 
-type Estimate = {
+type PublicConfig = {
+  consent: { title: string; body: string; checkbox: string; privacyNote: string };
+  aiActive: boolean;
+  currency: string;
+  options: Record<"materials" | "finishes" | "lenses" | "delivery" | "urgency", { id: string; label: string; note: string }[]>;
+};
+
+type EnrichedConcept = {
+  id: string;
+  label: string;
+  summary: string;
+  designNotes: string[];
+  printability: number;
+  matchRate: number;
+  basePrice: number;
+  image: string;
+  ai: boolean;
+  tags: StyleTag[];
+};
+
+type AnalysisReport = {
+  faceShapeLabel: string;
+  recommendation: string;
+  advise: string[];
+  avoid: string[];
+  chasse: { frameWidth: string; bridge: string; note: string };
+};
+
+type Quote = {
   base: number;
-  lens: number;
+  material: number;
   finish: number;
+  lens: number;
+  delivery: number;
+  urgency: number;
+  complexityCoef: number;
+  margin: number;
   total: number;
   currency: string;
 };
 
-const LENS_OPTIONS = [
-  { id: "sans-correction", label: "Sans correction", note: "Verres neutres traités anti-reflets" },
-  { id: "correction", label: "Correcteurs", note: "Selon votre prescription (+120 $)" },
-  { id: "solaire", label: "Solaires", note: "Catégorie 3, protection UV (+80 $)" },
-] as const;
-
-const FINISH_OPTIONS = [
-  { id: "standard", label: "Satinée standard", note: "Micro-billage uniforme" },
-  { id: "premium", label: "Premium polie", note: "Lissage et scellement renforcé (+45 $)" },
-] as const;
-
 export function Configurator({ baseModel }: { baseModel?: string }) {
+  const [config, setConfig] = useState<PublicConfig | null>(null);
   const [step, setStep] = useState<ConfiguratorStep>("intro");
   const [consent, setConsent] = useState(false);
-  const [faceShape, setFaceShape] = useState<FaceShape | null>(null);
+
+  // Morphologie
+  const [scan, setScan] = useState<ScanResult | null>(null);
+  const [report, setReport] = useState<AnalysisReport | null>(null);
+
+  // Style
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [boldness, setBoldness] = useState<Boldness>("equilibre");
-  const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
-  const [lensType, setLensType] = useState<(typeof LENS_OPTIONS)[number]["id"]>("sans-correction");
-  const [finish, setFinish] = useState<(typeof FINISH_OPTIONS)[number]["id"]>("standard");
-  const [estimate, setEstimate] = useState<Estimate | null>(null);
-  const [estimateLoading, setEstimateLoading] = useState(false);
+
+  // Moodboard / concepts
+  const [moodboard, setMoodboard] = useState<{ image: string; ai: boolean; palette: { name: string; colors: string[]; material: string } } | null>(null);
+  const [moodboardLoading, setMoodboardLoading] = useState(false);
+  const [concepts, setConcepts] = useState<EnrichedConcept[]>([]);
+  const [conceptsLoading, setConceptsLoading] = useState(false);
+  const [selected, setSelected] = useState<EnrichedConcept | null>(null);
+
+  // Essayage
+  const [snapshot, setSnapshot] = useState<string | null>(null);
+  const [portrait, setPortrait] = useState<string | null>(null);
+  const [portraitLoading, setPortraitLoading] = useState(false);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
+  const [tryonMode, setTryonMode] = useState<"studio" | "live">("studio");
+
+  // Devis
+  const [opts, setOpts] = useState({
+    material: "pa12-standard",
+    finish: "standard",
+    lensType: "sans-correction",
+    delivery: "standard",
+    urgency: "none",
+  });
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
+  // Demande
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
   const [submitState, setSubmitState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [attachPhoto, setAttachPhoto] = useState(true);
+
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const moodboardDone = useRef(false);
+  const conceptsDone = useRef(false);
 
   const stepIndex = STEP_ORDER.indexOf(step);
   const profile = useMemo(() => answersToProfile(answers), [answers]);
-  const concepts = useMemo(
-    () => buildConcepts(faceShape, profile, boldness),
-    [faceShape, profile, boldness]
-  );
+  const palette = useMemo(() => profilePalette(profile), [profile]);
+
+  // Une photo existe-t-elle quelque part ? (pilote « Supprimer ma photo »)
+  const hasPhoto = Boolean(scan?.photoDataUrl || snapshot || portrait);
+
+  // ── Chargement de la config publique ──────────────────────────────────────
+  useEffect(() => {
+    fetch("/api/configurator/config")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setConfig)
+      .catch(() => setConfig(null));
+  }, []);
 
   function go(delta: number) {
     const next = STEP_ORDER[Math.min(Math.max(stepIndex + delta, 0), STEP_ORDER.length - 1)];
@@ -95,50 +169,132 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     }
   }
 
-  // Estimation recalculée côté serveur à chaque variation pertinente.
+  // ── Analyse : rapport de chausse après scan ───────────────────────────────
+  const onScanComplete = useCallback((result: ScanResult) => {
+    setScan(result);
+    fetch("/api/configurator/analysis-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ measurements: result.measurements ?? {}, faceShape: result.faceShape }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => data && setReport(data))
+      .catch(() => setReport(null));
+    setStep("analysis");
+  }, []);
+
+  // ── Moodboard (à l'entrée de l'étape) ─────────────────────────────────────
   useEffect(() => {
-    if (step !== "estimate" || !selectedConcept) return;
-    let cancelled = false;
-    setEstimateLoading(true);
-    fetch("/api/configurator/estimate", {
+    if (step !== "moodboard" || moodboardDone.current || !profile.length) return;
+    moodboardDone.current = true;
+    setMoodboardLoading(true);
+    fetch("/api/configurator/moodboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ styleTags: profile, faceShape: scan?.faceShape }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setMoodboard)
+      .catch(() => setMoodboard(null))
+      .finally(() => setMoodboardLoading(false));
+  }, [step, profile, scan]);
+
+  // ── Concepts (à l'entrée de l'étape) ──────────────────────────────────────
+  useEffect(() => {
+    if (step !== "concepts" || conceptsDone.current || !profile.length) return;
+    conceptsDone.current = true;
+    setConceptsLoading(true);
+    fetch("/api/configurator/concepts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        conceptLabel: selectedConcept.label,
+        styleTags: profile,
+        faceShape: scan?.faceShape,
         boldness,
-        lensType,
-        finish,
+        moodboardImage: moodboard?.ai ? moodboard.image : undefined,
       }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => {
-        if (!cancelled) setEstimate(data);
-      })
-      .catch(() => {
-        if (!cancelled) setEstimate(null);
-      })
-      .finally(() => {
-        if (!cancelled) setEstimateLoading(false);
-      });
+      .then((data) => setConcepts(data.concepts ?? []))
+      .catch(() => setConcepts([]))
+      .finally(() => setConceptsLoading(false));
+  }, [step, profile, scan, boldness, moodboard]);
+
+  // ── Devis (recalculé serveur à chaque variation) ──────────────────────────
+  useEffect(() => {
+    if (step !== "quote" || !selected) return;
+    let cancelled = false;
+    setQuoteLoading(true);
+    fetch("/api/configurator/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conceptLabel: selected.label, boldness, ...opts }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => !cancelled && setQuote(data))
+      .catch(() => !cancelled && setQuote(null))
+      .finally(() => !cancelled && setQuoteLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [step, selectedConcept, boldness, lensType, finish]);
+  }, [step, selected, boldness, opts]);
 
-  async function submitRequest() {
+  // ── Suppression des photos (confidentialité) ──────────────────────────────
+  function deletePhotos() {
+    setScan((s) => (s ? { ...s, photoDataUrl: null } : s));
+    setSnapshot(null);
+    setPortrait(null);
+  }
+
+  // ── Portrait porté ────────────────────────────────────────────────────────
+  function generatePortrait() {
+    const photo = snapshot || scan?.photoDataUrl;
+    if (!photo || !selected) return;
+    setPortraitLoading(true);
+    setPortraitError(null);
+    fetch("/api/configurator/tryon-portrait", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conceptLabel: selected.label, styleTags: profile, photo }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+      .then((data) => setPortrait(data.image))
+      .catch(() => setPortraitError("La génération du portrait est momentanément indisponible. Utilisez l'essayage caméra ci-dessus."))
+      .finally(() => setPortraitLoading(false));
+  }
+
+  // ── Soumission (ajout au panier / atelier) ────────────────────────────────
+  async function submit() {
     setSubmitState("loading");
     try {
+      let photoToken: string | undefined;
+      const photoToAttach = portrait || snapshot || scan?.photoDataUrl;
+      if (attachPhoto && photoToAttach) {
+        const pr = await fetch("/api/configurator/photo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: photoToAttach, kind: portrait ? "portrait" : "snapshot" }),
+        });
+        if (pr.ok) photoToken = (await pr.json()).token;
+      }
       const res = await fetch("/api/customization", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          faceShape: faceShape ?? undefined,
+          faceShape: scan?.faceShape,
+          measurements: scan?.measurements ?? undefined,
+          analysisReport: report ?? undefined,
           styleTags: profile,
           boldness,
-          conceptLabel: selectedConcept?.label,
-          conceptSummary: selectedConcept?.summary,
-          options: { lensType, finish, ...(baseModel ? { baseModel } : {}) },
+          conceptLabel: selected?.label,
+          conceptSummary: selected?.summary,
+          conceptData: selected ?? undefined,
+          matchRate: selected?.matchRate,
+          moodboardUrl: moodboard?.ai ? undefined : moodboard?.image,
+          options: opts,
+          photoToken,
+          ...(baseModel ? { message: `${form.message}\n[base: ${baseModel}]` } : {}),
         }),
       });
       if (!res.ok) throw new Error();
@@ -149,23 +305,43 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   }
 
   const canContinue =
-    (step === "intro") ||
+    step === "intro" ||
     (step === "consent" && consent) ||
-    (step === "morphology" && faceShape !== null) ||
+    (step === "capture" && scan !== null) ||
+    step === "analysis" ||
     (step === "style" && Object.keys(answers).length === STYLE_QUESTIONS.length) ||
-    step === "recap" ||
-    (step === "concepts" && selectedConcept !== null) ||
-    step === "estimate";
+    (step === "moodboard" && moodboard !== null) ||
+    (step === "concepts" && selected !== null) ||
+    step === "tryon" ||
+    step === "quote";
+
+  if (!config) {
+    return (
+      <div className="flex items-center justify-center rounded-3xl border border-border bg-surface p-16 text-muted">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Chargement du configurateur…
+      </div>
+    );
+  }
 
   return (
     <div id="configurateur" className="scroll-mt-24 rounded-3xl border border-border bg-surface p-6 md:p-12">
-      {/* Barre de progression */}
+      {/* Barre de progression + bouton suppression photo permanent */}
       <div className="mb-10">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="eyebrow">
             Étape {stepIndex + 1} / {STEP_ORDER.length} — {STEP_LABELS[step]}
           </p>
-          {baseModel && <Badge variant="blue">Base : {baseModel}</Badge>}
+          <div className="flex items-center gap-3">
+            {baseModel && <Badge variant="blue">Base : {baseModel}</Badge>}
+            {hasPhoto && (
+              <button
+                onClick={deletePhotos}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-red-400 hover:text-red-600"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Supprimer ma photo
+              </button>
+            )}
+          </div>
         </div>
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-foreground/10">
           <motion.div
@@ -187,35 +363,26 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
           {step === "intro" && (
             <div className="max-w-2xl">
               <h2 className="font-display text-3xl font-bold md:text-4xl">
-                Votre monture ne se choisit plus. Elle se configure.
+                Votre monture ne se choisit plus. Elle se génère pour vous.
               </h2>
               <p className="mt-5 leading-relaxed text-muted">
-                En quelques minutes, ce parcours traduit votre morphologie et
-                votre style en trois concepts de montures imprimables — puis en
-                une estimation transparente. Notre atelier prend ensuite le
-                relais pour affiner, valider et produire.
+                Ce parcours analyse votre morphologie, lit votre style, compose un
+                moodboard puis génère trois concepts de montures imprimables —
+                que vous pouvez essayer en direct avant d'ajuster matière, finition
+                et prix.
               </p>
               <ul className="mt-6 space-y-2 text-sm text-muted">
-                <li className="flex gap-2"><ShieldCheck className="h-4 w-4 shrink-0 text-accent-blue" /> Aucune donnée traitée sans votre consentement explicite.</li>
-                <li className="flex gap-2"><Sparkles className="h-4 w-4 shrink-0 text-accent-blue" /> Trois propositions maximum, jamais une copie du catalogue.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-accent-blue" /> Estimation calculée par notre atelier, sans frais cachés.</li>
+                <li className="flex gap-2"><ShieldCheck className="h-4 w-4 shrink-0 text-accent-blue" /> Analyse faciale dans votre navigateur, sans transfert d'image.</li>
+                <li className="flex gap-2"><Sparkles className="h-4 w-4 shrink-0 text-accent-blue" /> Trois concepts maximum, jamais une copie du catalogue.</li>
+                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-accent-blue" /> Prix calculé par notre atelier, sans frais cachés.</li>
               </ul>
             </div>
           )}
 
           {step === "consent" && (
             <div className="max-w-2xl">
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Avant de commencer : votre consentement.
-              </h2>
-              <p className="mt-4 leading-relaxed text-muted">
-                Vos réponses servent uniquement à générer vos concepts et à
-                préparer votre demande. Elles ne sont transmises à aucun tiers
-                à des fins commerciales, et vous pouvez demander leur
-                suppression à tout moment. Lorsque l’analyse faciale par caméra
-                sera activée, vos images resteront temporaires et supprimables
-                d’un clic — le même principe s’appliquera.
-              </p>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">{config.consent.title}</h2>
+              <p className="mt-4 leading-relaxed text-muted">{config.consent.body}</p>
               <label className="mt-7 flex cursor-pointer items-start gap-4 rounded-2xl border border-border p-5 transition-colors hover:border-foreground">
                 <input
                   type="checkbox"
@@ -223,67 +390,105 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                   onChange={(e) => setConsent(e.target.checked)}
                   className="mt-1 h-5 w-5 accent-[var(--accent-blue)]"
                 />
-                <span className="text-sm leading-relaxed">
-                  J’accepte que mes réponses soient utilisées pour générer mes
-                  concepts de montures et préparer ma demande de
-                  personnalisation.
-                </span>
+                <span className="text-sm leading-relaxed">{config.consent.checkbox}</span>
               </label>
+              <p className="mt-4 flex gap-2 text-xs text-muted">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-accent-blue" />
+                {config.consent.privacyNote}
+              </p>
             </div>
           )}
 
-          {step === "morphology" && (
+          {step === "capture" && (
             <div>
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Votre morphologie, point de départ du design.
-              </h2>
-              <p className="mt-3 max-w-2xl text-muted">
-                Sélectionnez la forme la plus proche de votre visage. L’analyse
-                faciale par caméra (mesures millimétriques en temps réel)
-                arrive bientôt et affinera automatiquement cette étape.
+              <h2 className="mb-2 font-display text-2xl font-bold md:text-3xl">Capturez votre visage</h2>
+              <p className="mb-8 max-w-2xl text-muted">
+                Activez votre caméra pour une analyse en direct, ou téléversez une
+                photo de face. L'analyse se fait localement.
               </p>
-              <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {FACE_SHAPES.map((shape) => (
-                  <button
-                    key={shape.id}
-                    onClick={() => setFaceShape(shape.id)}
-                    aria-pressed={faceShape === shape.id}
-                    className={cn(
-                      "rounded-2xl border p-5 text-left transition-all duration-200",
-                      faceShape === shape.id
-                        ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue"
-                        : "border-border hover:border-foreground"
+              <FaceScanner onComplete={onScanComplete} />
+            </div>
+          )}
+
+          {step === "analysis" && (
+            <div>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">Votre morphologie analysée</h2>
+              <p className="mt-3 max-w-2xl text-muted">
+                468 points de repère posés sur votre visage, mesures calibrées sur
+                votre iris.
+              </p>
+              <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+                <div className="space-y-5 rounded-2xl border border-border p-6">
+                  <div>
+                    <p className="eyebrow mb-2">Forme du visage</p>
+                    <p className="font-display text-2xl font-bold">
+                      {report?.faceShapeLabel ?? FACE_SHAPES.find((f) => f.id === scan?.faceShape)?.label}
+                    </p>
+                    {report?.recommendation && (
+                      <p className="mt-2 text-sm text-muted">{report.recommendation}</p>
                     )}
-                  >
-                    <p className="font-display font-semibold">{shape.label}</p>
-                    <p className="mt-1 text-xs text-muted">{shape.hint}</p>
-                  </button>
-                ))}
+                  </div>
+                  {scan?.measurements && (
+                    <>
+                      <div className="hairline" />
+                      <div>
+                        <p className="eyebrow mb-3 flex items-center gap-1.5"><Ruler className="h-3.5 w-3.5" /> Mesures (mm)</p>
+                        <dl className="grid grid-cols-2 gap-2 text-sm">
+                          {(Object.keys(scan.measurements) as (keyof FaceMeasurements)[]).map((k) => (
+                            <div key={k} className="flex justify-between gap-2 rounded-lg bg-foreground/[0.03] px-3 py-1.5">
+                              <dt className="text-muted">{MEASUREMENT_LABELS[k]}</dt>
+                              <dd className="font-medium">{scan.measurements![k]}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="space-y-5">
+                  {report && (
+                    <div className="rounded-2xl border border-border p-6">
+                      <p className="eyebrow mb-3">Recommandations de chausse</p>
+                      <ul className="space-y-2 text-sm">
+                        <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent-blue" />{report.chasse.frameWidth}</li>
+                        <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent-blue" />{report.chasse.bridge}</li>
+                        <li className="flex gap-2 text-muted">{report.chasse.note}</li>
+                      </ul>
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-medium text-emerald-600">À privilégier</p>
+                          <ul className="mt-1 space-y-1 text-xs text-muted">
+                            {report.advise.map((a) => <li key={a}>· {a}</li>)}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-amber-600">À éviter</p>
+                          <ul className="mt-1 space-y-1 text-xs text-muted">
+                            {report.avoid.map((a) => <li key={a}>· {a}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {scan?.photoDataUrl && (
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={scan.photoDataUrl} alt="Votre capture" className="h-full w-full -scale-x-100 object-cover" />
+                    </div>
+                  )}
+                </div>
               </div>
-              {faceShape && (
-                <p className="mt-6 rounded-xl bg-accent-blue/5 p-4 text-sm text-foreground">
-                  <span className="font-medium">Notre lecture : </span>
-                  {FACE_SHAPES.find((f) => f.id === faceShape)?.recommendation}
-                </p>
-              )}
             </div>
           )}
 
           {step === "style" && (
             <div>
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Quelques préférences — pas un interrogatoire.
-              </h2>
-              <p className="mt-3 max-w-2xl text-muted">
-                Vos réponses sont converties en signature esthétique. Il n’y a
-                aucune bonne réponse.
-              </p>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">Quelques préférences — pas un test.</h2>
+              <p className="mt-3 max-w-2xl text-muted">Vos réponses composent votre signature esthétique. Aucune bonne réponse.</p>
               <div className="mt-8 space-y-10">
                 {STYLE_QUESTIONS.map((q, qi) => (
                   <fieldset key={q.id}>
-                    <legend className="font-display font-semibold">
-                      {qi + 1}. {q.question}
-                    </legend>
+                    <legend className="font-display font-semibold">{qi + 1}. {q.question}</legend>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       {q.options.map((opt) => (
                         <button
@@ -292,9 +497,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                           aria-pressed={answers[q.id] === opt.id}
                           className={cn(
                             "rounded-xl border px-5 py-4 text-left text-sm transition-all",
-                            answers[q.id] === opt.id
-                              ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue"
-                              : "border-border hover:border-foreground"
+                            answers[q.id] === opt.id ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue" : "border-border hover:border-foreground"
                           )}
                         >
                           {opt.label}
@@ -303,11 +506,8 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                     </div>
                   </fieldset>
                 ))}
-
                 <fieldset>
-                  <legend className="font-display font-semibold">
-                    Et côté audace ?
-                  </legend>
+                  <legend className="font-display font-semibold">Et côté audace ?</legend>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3">
                     {BOLDNESS_LEVELS.map((b) => (
                       <button
@@ -316,9 +516,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                         aria-pressed={boldness === b.id}
                         className={cn(
                           "rounded-xl border px-5 py-4 text-left transition-all",
-                          boldness === b.id
-                            ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue"
-                            : "border-border hover:border-foreground"
+                          boldness === b.id ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue" : "border-border hover:border-foreground"
                         )}
                       >
                         <p className="text-sm font-semibold">{b.label}</p>
@@ -331,43 +529,51 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
             </div>
           )}
 
-          {step === "recap" && (
-            <div className="max-w-2xl">
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Votre profil de design.
-              </h2>
-              <p className="mt-3 text-muted">
-                C’est la matière première de vos concepts. Le moodboard visuel
-                généré (planche éditoriale d’inspiration) arrivera avec le
-                studio IA.
+          {step === "moodboard" && (
+            <div>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">Votre moodboard</h2>
+              <p className="mt-3 max-w-2xl text-muted">
+                Une planche d'ambiance composée à partir de votre profil : palette,
+                matières, textures lattice. Elle guide la cohérence de vos concepts.
               </p>
-              <div className="mt-8 space-y-5 rounded-2xl border border-border p-7">
+              <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
                 <div>
-                  <p className="eyebrow mb-2">Morphologie</p>
-                  <p className="font-display text-lg font-semibold">
-                    {FACE_SHAPES.find((f) => f.id === faceShape)?.label ?? "Non précisée"}
-                  </p>
-                </div>
-                <div className="hairline" />
-                <div>
-                  <p className="eyebrow mb-2">Signature esthétique</p>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.map((tag) => (
-                      <Badge key={tag} variant="blue">{TAG_LABELS[tag]}</Badge>
-                    ))}
-                    <Badge variant="orange">
-                      {BOLDNESS_LEVELS.find((b) => b.id === boldness)?.label}
-                    </Badge>
-                  </div>
-                </div>
-                {baseModel && (
-                  <>
-                    <div className="hairline" />
-                    <div>
-                      <p className="eyebrow mb-2">Modèle de départ</p>
-                      <p className="font-display text-lg font-semibold capitalize">{baseModel}</p>
+                  {moodboardLoading ? (
+                    <div className="flex aspect-[3/2] items-center justify-center rounded-2xl border border-border bg-foreground/[0.03] text-muted">
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Composition du moodboard…
                     </div>
-                  </>
+                  ) : moodboard ? (
+                    <button
+                      onClick={() => setLightbox(moodboard.image)}
+                      className="group relative block aspect-[3/2] w-full overflow-hidden rounded-2xl border border-border"
+                    >
+                      <Image src={moodboard.image} alt="Moodboard" fill unoptimized className="object-cover transition-transform group-hover:scale-105" sizes="(max-width:1024px) 100vw, 60vw" />
+                      <span className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs text-white">Agrandir</span>
+                    </button>
+                  ) : null}
+                </div>
+                {moodboard && (
+                  <div className="space-y-5">
+                    <div className="rounded-2xl border border-border p-6">
+                      <p className="eyebrow mb-3">Palette — {moodboard.palette.name}</p>
+                      <div className="flex gap-2">
+                        {moodboard.palette.colors.map((c) => (
+                          <div key={c} className="flex-1">
+                            <div className="h-12 rounded-lg ring-1 ring-black/10" style={{ backgroundColor: c }} />
+                            <p className="mt-1 text-center text-[10px] text-muted">{c}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-4 text-sm text-muted">Matière : {moodboard.palette.material}</p>
+                    </div>
+                    <div className="rounded-2xl border border-border p-6">
+                      <p className="eyebrow mb-3">Signature</p>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.map((t) => <Badge key={t} variant="blue">{TAG_LABELS[t]}</Badge>)}
+                        <Badge variant="orange">{BOLDNESS_LEVELS.find((b) => b.id === boldness)?.label}</Badge>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -375,140 +581,166 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
 
           {step === "concepts" && (
             <div>
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Trois directions. Pas une de plus.
-              </h2>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">Trois concepts pour vous</h2>
               <p className="mt-3 max-w-2xl text-muted">
-                Générées à partir de votre profil et triées par score
-                d’imprimabilité. Notre collection existante inspire ces
-                directions mais n’est jamais recopiée — votre monture sera la
-                vôtre.
+                Générés à partir de votre moodboard et de votre morphologie, triés
+                par taux de correspondance. La collection existante inspire, sans
+                jamais être recopiée.
               </p>
-              <div className="mt-8 grid gap-5 lg:grid-cols-3">
-                {concepts.map((concept) => (
-                  <button
-                    key={concept.id}
-                    onClick={() => setSelectedConcept(concept)}
-                    aria-pressed={selectedConcept?.id === concept.id}
-                    className={cn(
-                      "flex h-full flex-col rounded-2xl border p-6 text-left transition-all",
-                      selectedConcept?.id === concept.id
-                        ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue"
-                        : "border-border hover:border-foreground"
+              {conceptsLoading ? (
+                <div className="mt-8 flex items-center justify-center rounded-2xl border border-border bg-foreground/[0.03] p-16 text-muted">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Génération de vos concepts…
+                </div>
+              ) : (
+                <div className="mt-8 grid gap-5 lg:grid-cols-3">
+                  {concepts.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelected(c)}
+                      aria-pressed={selected?.id === c.id}
+                      className={cn(
+                        "flex h-full flex-col overflow-hidden rounded-2xl border text-left transition-all",
+                        selected?.id === c.id ? "border-accent-blue ring-2 ring-accent-blue" : "border-border hover:border-foreground"
+                      )}
+                    >
+                      <div className="relative aspect-square bg-[#0a0a0a]">
+                        <Image src={c.image} alt={c.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 33vw" />
+                        <span className="absolute left-3 top-3 rounded-full bg-accent-blue px-2.5 py-1 text-xs font-medium text-white">{c.matchRate}% match</span>
+                      </div>
+                      <div className="flex flex-1 flex-col p-5">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-display text-lg font-bold">{c.label}</h3>
+                          <Badge variant="success">{c.printability}% impr.</Badge>
+                        </div>
+                        <p className="mt-2 flex-1 text-sm text-muted">{c.summary}</p>
+                        <p className="mt-4 font-display font-semibold">À partir de {c.basePrice} $ CAD</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === "tryon" && selected && (
+            <div>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">Essayez « {selected.label} »</h2>
+              <div className="mt-6 flex gap-2">
+                <button onClick={() => setTryonMode("studio")} className={cn("rounded-full px-4 py-1.5 text-sm", tryonMode === "studio" ? "bg-foreground text-background" : "border border-border text-muted")}>Vue studio</button>
+                <button onClick={() => setTryonMode("live")} className={cn("rounded-full px-4 py-1.5 text-sm", tryonMode === "live" ? "bg-foreground text-background" : "border border-border text-muted")}>Essayage caméra</button>
+              </div>
+
+              <div className="mt-6 grid gap-8 lg:grid-cols-2">
+                <div>
+                  {tryonMode === "studio" ? (
+                    <button onClick={() => setLightbox(selected.image)} className="relative block aspect-square w-full overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
+                      <Image src={selected.image} alt={selected.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                    </button>
+                  ) : (
+                    <FaceTryon paletteColors={palette.colors} onCapture={(d) => setSnapshot(d)} />
+                  )}
+                </div>
+
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-border p-6">
+                    <p className="eyebrow mb-2">Votre portrait porté</p>
+                    <p className="text-sm text-muted">
+                      Générez un portrait photoréaliste vous montrant avec exactement
+                      cette monture — votre visage est strictement préservé.
+                    </p>
+                    {portrait ? (
+                      <button onClick={() => setLightbox(portrait)} className="relative mt-4 block aspect-square w-full overflow-hidden rounded-xl border border-border">
+                        <Image src={portrait} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                      </button>
+                    ) : (
+                      <Button
+                        onClick={generatePortrait}
+                        disabled={portraitLoading || (!snapshot && !scan?.photoDataUrl)}
+                        className="mt-4 gap-2"
+                      >
+                        {portraitLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                        Générer mon portrait
+                      </Button>
                     )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-display text-lg font-bold">{concept.label}</h3>
-                      <Badge variant="success">{concept.printability}% imprimable</Badge>
+                    {!snapshot && !scan?.photoDataUrl && (
+                      <p className="mt-2 text-xs text-muted">Capturez d'abord un essayage ou une photo.</p>
+                    )}
+                    {portraitError && <p className="mt-2 text-xs text-amber-600">{portraitError}</p>}
+                  </div>
+
+                  {snapshot && (
+                    <div className="rounded-2xl border border-border p-4">
+                      <p className="eyebrow mb-2 flex items-center gap-1.5"><Camera className="h-3.5 w-3.5" /> Essayage capturé</p>
+                      <button onClick={() => setLightbox(snapshot)} className="relative block aspect-video w-full overflow-hidden rounded-xl">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={snapshot} alt="Essayage capturé" className="h-full w-full object-cover" />
+                      </button>
                     </div>
-                    <p className="mt-3 flex-1 text-sm leading-relaxed text-muted">
-                      {concept.summary}
-                    </p>
-                    <ul className="mt-4 space-y-1.5">
-                      {concept.designNotes.map((note) => (
-                        <li key={note} className="flex gap-2 text-xs text-muted">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-blue" />
-                          {note}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-5 font-display font-semibold">
-                      À partir de {concept.basePrice} $ CAD
-                    </p>
-                  </button>
-                ))}
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {step === "estimate" && selectedConcept && (
+          {step === "quote" && selected && (
             <div className="grid gap-10 lg:grid-cols-[1.2fr_1fr]">
               <div>
-                <h2 className="font-display text-2xl font-bold md:text-3xl">
-                  Affinez votre configuration.
-                </h2>
-                <div className="mt-7 space-y-8">
-                  <fieldset>
-                    <legend className="font-display font-semibold">Verres</legend>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                      {LENS_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.id}
-                          onClick={() => setLensType(opt.id)}
-                          aria-pressed={lensType === opt.id}
-                          className={cn(
-                            "rounded-xl border px-4 py-3 text-left transition-all",
-                            lensType === opt.id
-                              ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue"
-                              : "border-border hover:border-foreground"
-                          )}
-                        >
-                          <p className="text-sm font-semibold">{opt.label}</p>
-                          <p className="mt-0.5 text-xs text-muted">{opt.note}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <fieldset>
-                    <legend className="font-display font-semibold">Finition</legend>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {FINISH_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.id}
-                          onClick={() => setFinish(opt.id)}
-                          aria-pressed={finish === opt.id}
-                          className={cn(
-                            "rounded-xl border px-4 py-3 text-left transition-all",
-                            finish === opt.id
-                              ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue"
-                              : "border-border hover:border-foreground"
-                          )}
-                        >
-                          <p className="text-sm font-semibold">{opt.label}</p>
-                          <p className="mt-0.5 text-xs text-muted">{opt.note}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
+                <h2 className="font-display text-2xl font-bold md:text-3xl">Matière, finition, options</h2>
+                <div className="mt-7 space-y-7">
+                  {([
+                    ["material", "Matériau", config.options.materials],
+                    ["finish", "Finition", config.options.finishes],
+                    ["lensType", "Verres", config.options.lenses],
+                    ["delivery", "Livraison", config.options.delivery],
+                    ["urgency", "Urgence", config.options.urgency],
+                  ] as const).map(([key, label, list]) => (
+                    <fieldset key={key}>
+                      <legend className="font-display text-sm font-semibold">{label}</legend>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        {list.map((o) => (
+                          <button
+                            key={o.id}
+                            onClick={() => setOpts((s) => ({ ...s, [key]: o.id }))}
+                            aria-pressed={opts[key] === o.id}
+                            className={cn(
+                              "rounded-xl border px-4 py-3 text-left transition-all",
+                              opts[key] === o.id ? "border-accent-blue bg-accent-blue/5 ring-1 ring-accent-blue" : "border-border hover:border-foreground"
+                            )}
+                          >
+                            <p className="text-sm font-semibold">{o.label}</p>
+                            <p className="mt-0.5 text-xs text-muted">{o.note}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ))}
                 </div>
               </div>
 
               <aside className="h-fit rounded-2xl border border-border bg-background p-7 lg:sticky lg:top-28">
-                <p className="eyebrow mb-4">Estimation atelier</p>
-                {estimateLoading ? (
-                  <div className="flex items-center gap-2 text-muted">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Calcul en cours…
-                  </div>
-                ) : estimate ? (
-                  <dl className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Concept « {selectedConcept.label} »</dt>
-                      <dd className="font-medium">{estimate.base} $</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Verres</dt>
-                      <dd className="font-medium">{estimate.lens > 0 ? `${estimate.lens} $` : "Inclus"}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted">Finition</dt>
-                      <dd className="font-medium">{estimate.finish > 0 ? `${estimate.finish} $` : "Incluse"}</dd>
-                    </div>
+                <p className="eyebrow mb-4">Devis atelier</p>
+                {quoteLoading ? (
+                  <div className="flex items-center gap-2 text-muted"><Loader2 className="h-4 w-4 animate-spin" /> Calcul…</div>
+                ) : quote ? (
+                  <dl className="space-y-2.5 text-sm">
+                    <Row label={`Concept « ${selected.label} »`} value={`${quote.base} $`} />
+                    {quote.complexityCoef !== 1 && <Row label={`Complexité ×${quote.complexityCoef}`} value="" muted />}
+                    <Row label="Matériau" value={quote.material > 0 ? `${quote.material} $` : "Inclus"} />
+                    <Row label="Finition" value={quote.finish > 0 ? `${quote.finish} $` : "Incluse"} />
+                    <Row label="Verres" value={quote.lens > 0 ? `${quote.lens} $` : "Inclus"} />
+                    <Row label="Livraison" value={quote.delivery > 0 ? `${quote.delivery} $` : "Incluse"} />
+                    {quote.urgency > 0 && <Row label="Urgence" value={`${quote.urgency} $`} />}
                     <div className="hairline !my-4" />
                     <div className="flex justify-between font-display text-xl font-bold">
                       <dt>Total estimé</dt>
-                      <dd>{estimate.total} $ {estimate.currency}</dd>
+                      <dd>{quote.total} $ {quote.currency}</dd>
                     </div>
                   </dl>
                 ) : (
-                  <p className="text-sm text-muted">
-                    Estimation momentanément indisponible — vous pourrez tout de
-                    même envoyer votre demande, notre atelier vous répondra
-                    avec un devis précis.
-                  </p>
+                  <p className="text-sm text-muted">Estimation indisponible — vous pourrez tout de même envoyer votre demande.</p>
                 )}
                 <p className="mt-5 text-xs leading-relaxed text-muted">
-                  Estimation indicative, validée par notre atelier avant toute
-                  commande. Production et expédition depuis Montréal.
+                  Prix recalculé côté serveur à chaque option. Validé par l'atelier avant production.
                 </p>
               </aside>
             </div>
@@ -519,79 +751,54 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
               {submitState === "done" ? (
                 <div className="py-8 text-center">
                   <CheckCircle2 className="mx-auto h-14 w-14 text-accent-blue" />
-                  <h2 className="mt-5 font-display text-2xl font-bold md:text-3xl">
-                    Votre demande est dans l’atelier.
-                  </h2>
+                  <h2 className="mt-5 font-display text-2xl font-bold md:text-3xl">Ajouté au panier atelier.</h2>
                   <p className="mx-auto mt-3 max-w-md text-muted">
-                    Notre équipe étudie votre profil et votre concept « {selectedConcept?.label} »,
-                    puis vous recontacte sous 48 h ouvrables avec une proposition affinée.
+                    Votre configuration « {selected?.label} » — morphologie, profil,
+                    concept{quote ? ` et estimation (${quote.total} $ CAD)` : ""} — est
+                    transmise à notre atelier montréalais. Nous vous recontactons sous
+                    48 h ouvrables.
                   </p>
                 </div>
               ) : (
                 <>
-                  <h2 className="font-display text-2xl font-bold md:text-3xl">
-                    Dernière étape : où vous joindre ?
-                  </h2>
+                  <h2 className="font-display text-2xl font-bold md:text-3xl">Finaliser votre demande</h2>
                   <p className="mt-3 text-muted">
-                    Votre profil, votre concept et votre estimation sont joints
-                    automatiquement à la demande.
+                    Toutes les données utiles (analyse, profil, concept, options
+                    {quote ? `, prix ${quote.total} $ CAD` : ""}) sont jointes pour l'atelier.
                   </p>
                   <div className="mt-7 space-y-5">
                     <div className="grid gap-5 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="cfg-name">Nom *</Label>
-                        <Input
-                          id="cfg-name"
-                          value={form.name}
-                          autoComplete="name"
-                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        />
+                        <Input id="cfg-name" value={form.name} autoComplete="name" onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="cfg-email">Email *</Label>
-                        <Input
-                          id="cfg-email"
-                          type="email"
-                          value={form.email}
-                          autoComplete="email"
-                          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                        />
+                        <Input id="cfg-email" type="email" value={form.email} autoComplete="email" onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cfg-phone">Téléphone</Label>
-                      <Input
-                        id="cfg-phone"
-                        type="tel"
-                        value={form.phone}
-                        autoComplete="tel"
-                        onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                      />
+                      <Input id="cfg-phone" type="tel" value={form.phone} autoComplete="tel" onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cfg-message">Précisions (optionnel)</Label>
-                      <Textarea
-                        id="cfg-message"
-                        rows={4}
-                        placeholder="Contraintes, inspirations, prescription…"
-                        value={form.message}
-                        onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-                      />
+                      <Textarea id="cfg-message" rows={3} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder="Prescription, contraintes, inspirations…" />
                     </div>
-                    {submitState === "error" && (
-                      <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
-                        L’envoi a échoué. Vérifiez vos coordonnées puis réessayez,
-                        ou écrivez-nous à hello@additive.ca.
-                      </p>
+                    {(portrait || snapshot || scan?.photoDataUrl) && (
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
+                        <input type="checkbox" checked={attachPhoto} onChange={(e) => setAttachPhoto(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--accent-blue)]" />
+                        <span className="text-sm text-muted">
+                          Joindre ma photo d'essayage à la demande (temporaire, supprimable). Décochez pour ne rien transmettre.
+                        </span>
+                      </label>
                     )}
-                    <Button
-                      size="lg"
-                      className="gap-2"
-                      disabled={submitState === "loading" || !form.name || !form.email}
-                      onClick={submitRequest}
-                    >
+                    {submitState === "error" && (
+                      <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">L'envoi a échoué. Réessayez ou écrivez-nous à hello@additive.ca.</p>
+                    )}
+                    <Button size="lg" className="gap-2" disabled={submitState === "loading" || !form.name || !form.email} onClick={submit}>
                       {submitState === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Envoyer ma demande à l’atelier
+                      Ajouter au panier atelier
                     </Button>
                   </div>
                 </>
@@ -601,44 +808,28 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation */}
       {step !== "request" && (
         <div className="mt-12 flex items-center justify-between border-t border-border pt-7">
-          <Button
-            variant="ghost"
-            onClick={() => go(-1)}
-            disabled={stepIndex === 0}
-            className="gap-2"
-          >
+          <Button variant="ghost" onClick={() => go(-1)} disabled={stepIndex === 0} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Retour
           </Button>
           <Button onClick={() => go(1)} disabled={!canContinue} className="gap-2">
-            {step === "intro" ? "Commencer" : "Continuer"}
+            {step === "intro" ? "Commencer" : step === "tryon" ? "Voir le prix" : "Continuer"}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       )}
 
-      {/* Modules à venir — architecture prête */}
-      <div className="mt-12 rounded-2xl bg-foreground/[0.03] p-6">
-        <p className="eyebrow mb-4">Bientôt dans le configurateur</p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: ScanFace, label: "Analyse faciale live", note: "Mesures millimétriques par caméra, avec consentement et suppression à la demande" },
-            { icon: Wand2, label: "Moodboard génératif", note: "Planche d’inspiration éditoriale générée depuis votre profil" },
-            { icon: Camera, label: "Essayage AR", note: "Votre concept porté, en temps réel, fidèle au rendu final" },
-            { icon: Box, label: "Aperçu 3D", note: "Rotation et zoom sur votre monture avant production" },
-          ].map((m) => (
-            <div key={m.label} className="flex gap-3">
-              <m.icon className="mt-0.5 h-5 w-5 shrink-0 text-accent-orange" />
-              <div>
-                <p className="text-sm font-medium">{m.label}</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted">{m.note}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Lightbox src={lightbox} alt="Aperçu" open={Boolean(lightbox)} onClose={() => setLightbox(null)} />
+    </div>
+  );
+}
+
+function Row({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="flex justify-between">
+      <dt className={muted ? "text-xs text-muted" : "text-muted"}>{label}</dt>
+      <dd className="font-medium">{value}</dd>
     </div>
   );
 }

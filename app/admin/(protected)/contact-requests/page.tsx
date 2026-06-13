@@ -27,6 +27,16 @@ export default async function AdminRequestsPage({
     ),
   ]);
 
+  // Photos temporaires jointes (panneau atelier) — récupérées par token.
+  const tokens = customizations.map((c) => c.photoToken).filter(Boolean) as string[];
+  const photos = tokens.length
+    ? await safeQuery(
+        () => db.tempPhoto.findMany({ where: { token: { in: tokens } } }),
+        []
+      )
+    : [];
+  const photoByToken = new Map(photos.map((p) => [p.token, p.dataUrl]));
+
   return (
     <div className="space-y-6">
       <div>
@@ -139,7 +149,10 @@ export default async function AdminRequestsPage({
                 </div>
                 <div>
                   <dt className="text-xs uppercase tracking-wider text-muted">Concept</dt>
-                  <dd className="mt-0.5 font-medium">{c.conceptLabel ?? "—"}</dd>
+                  <dd className="mt-0.5 font-medium">
+                    {c.conceptLabel ?? "—"}
+                    {c.matchRate != null ? ` · ${c.matchRate}% match` : ""}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs uppercase tracking-wider text-muted">Options</dt>
@@ -148,6 +161,35 @@ export default async function AdminRequestsPage({
                   </dd>
                 </div>
               </dl>
+
+              {c.measurements && (
+                <dl className="mt-3 flex flex-wrap gap-2 text-xs">
+                  {Object.entries(c.measurements as Record<string, number>).map(([k, v]) => (
+                    <span key={k} className="rounded-md bg-foreground/[0.04] px-2 py-1 text-muted">
+                      {k.replace(/Mm$/, "")}: <span className="font-medium text-foreground">{v} mm</span>
+                    </span>
+                  ))}
+                </dl>
+              )}
+
+              {(c.photoToken && photoByToken.get(c.photoToken)) || c.moodboardUrl ? (
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {c.photoToken && photoByToken.get(c.photoToken) && (
+                    <div>
+                      <p className="mb-1 text-xs text-muted">Photo (temporaire)</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoByToken.get(c.photoToken)!} alt="Photo client" className="h-28 w-28 rounded-lg border border-border object-cover" />
+                    </div>
+                  )}
+                  {c.moodboardUrl && (
+                    <div>
+                      <p className="mb-1 text-xs text-muted">Moodboard</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={c.moodboardUrl} alt="Moodboard" className="h-28 w-40 rounded-lg border border-border object-cover" />
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {c.conceptSummary && (
                 <p className="mt-3 text-sm italic text-muted">« {c.conceptSummary} »</p>
