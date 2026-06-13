@@ -20,6 +20,7 @@ export type ScanResult = {
 };
 
 const TARGET_FRAMES = 28;
+const NO_FACE_RETRY = 40; // frames sans visage avant repli CPU
 
 export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -30,11 +31,15 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
   const streamRef = useRef<MediaStream | null>(null);
   const lmRef = useRef<any>(null);
   const visionRef = useRef<any>(null);
+  const noFaceRef = useRef(0);
+  const cpuTriedRef = useRef(false);
+  const switchingRef = useRef(false);
 
   const [mode, setMode] = useState<"idle" | "camera" | "upload" | "manual">("idle");
   const [status, setStatus] = useState<"none" | "loading" | "scanning" | "error">("none");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [diag, setDiag] = useState<string>("");
 
   const cleanup = useCallback(() => {
     runningRef.current = false;
@@ -49,10 +54,9 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
     cleanup();
     const avg = averageMeasurements(samplesRef.current);
     const shape = avg ? classifyShape(avg) : "ovale";
-    // Snapshot de la dernière frame (gardé en mémoire client, jamais envoyé seul).
     let photo: string | null = null;
     const video = videoRef.current;
-    if (video) {
+    if (video && video.videoWidth) {
       const c = document.createElement("canvas");
       c.width = video.videoWidth;
       c.height = video.videoHeight;
@@ -72,41 +76,40 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
     const vision = visionRef.current;
     if (!runningRef.current || !video || !canvas || !lm || !vision) return;
 
-    if (video.readyState >= 2) {
+    if (video.readyState >= 2 && video.videoWidth > 0) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext("2d");
-      let result;
+      let result: any = null;
       try {
         result = lm.detectForVideo(video, performance.now());
-      } catch {
-        result = null;
+      } catch (e) {
+        setDiag(`Erreur de détection : ${(e as Error)?.message ?? "inconnue"}`);
       }
+      const landmarks = result?.faceLandmarks?.[0];
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const landmarks = result?.faceLandmarks?.[0];
         if (landmarks) {
-          // Triangulation animée (maillage du visage).
-          const draw = new vision.DrawingUtils(ctx);
-          draw.drawConnectors(landmarks, vision.FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
-            color: "rgba(31,111,255,0.28)",
-            lineWidth: 0.6,
-          });
-          draw.drawConnectors(landmarks, vision.FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, {
-            color: "rgba(255,106,42,0.7)",
-            lineWidth: 1.5,
-          });
-          draw.drawConnectors(landmarks, vision.FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, {
-            color: "rgba(255,255,255,0.9)",
-            lineWidth: 1,
-          });
-          draw.drawConnectors(landmarks, vision.FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, {
-            color: "rgba(255,255,255,0.9)",
-            lineWidth: 1,
-          });
+          noFaceRef.current = 0;
+          // Dessin du maillage — robuste : repli en points manuels si l'API
+          // DrawingUtils diffère, pour ne jamais bloquer l'analyse.
+          try {
+            const FL = vision.FaceLandmarker;
+            const draw = new vision.DrawingUtils(ctx);
+            draw.drawConnectors(landmarks, FL.FACE_LANDMARKS_TESSELATION, { color: "rgba(31,111,255,0.3)", lineWidth: 0.6 });
+            draw.drawConnectors(landmarks, FL.FACE_LANDMARKS_FACE_OVAL, { color: "rgba(255,106,42,0.75)", lineWidth: 1.6 });
+            if (FL.FACE_LANDMARKS_LEFT_IRIS) draw.drawConnectors(landmarks, FL.FACE_LANDMARKS_LEFT_IRIS, { color: "rgba(255,255,255,0.9)", lineWidth: 1 });
+            if (FL.FACE_LANDMARKS_RIGHT_IRIS) draw.drawConnectors(landmarks, FL.FACE_LANDMARKS_RIGHT_IRIS, { color: "rgba(255,255,255,0.9)", lineWidth: 1 });
+          } catch {
+            ctx.fillStyle = "rgba(31,111,255,0.7)";
+            for (let i = 0; i < landmarks.length; i += 2) {
+              ctx.fillRect(landmarks[i].x * canvas.width, landmarks[i].y * canvas.height, 1.6, 1.6);
+            }
+          }
 
+          setDiag(`Visage détecté · ${landmarks.length} points`);
           const m = measureFace(landmarks, video.videoWidth, video.videoHeight);
-          if (m && m.pupillaryDistanceMm > 40 && m.pupillaryDistanceMm < 90) {
+          if (m && m.pupillaryDistanceMm > 40 && m.pupillaryDistanceMm < 95) {
             samplesRef.current.push(m);
             const p = Math.min(100, Math.round((samplesRef.current.length / TARGET_FRAMES) * 100));
             setProgress(p);
@@ -114,6 +117,23 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
               finalize();
               return;
             }
+          }
+        } else {
+          noFaceRef.current += 1;
+          if (noFaceRef.current === 8) setDiag("Recherche d'un visage… centrez-vous, bonne lumière.");
+          // Repli CPU si le GPU ne détecte rien.
+          if (noFaceRef.current >= NO_FACE_RETRY && !cpuTriedRef.current && !switchingRef.current) {
+            cpuTriedRef.current = true;
+            switchingRef.current = true;
+            setDiag("Optimisation du moteur d'analyse…");
+            getFaceLandmarker("CPU")
+              .then(({ landmarker, vision: v }) => {
+                lmRef.current = landmarker;
+                visionRef.current = v;
+                noFaceRef.current = 0;
+              })
+              .catch(() => {})
+              .finally(() => (switchingRef.current = false));
           }
         }
       }
@@ -125,10 +145,13 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
     setMode("camera");
     setStatus("loading");
     setError(null);
+    setDiag("");
     samplesRef.current = [];
+    noFaceRef.current = 0;
+    cpuTriedRef.current = false;
     setProgress(0);
     try {
-      const { landmarker, vision } = await getFaceLandmarker();
+      const { landmarker, vision } = await getFaceLandmarker("GPU");
       lmRef.current = landmarker;
       visionRef.current = vision;
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -169,9 +192,19 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
         img.onload = res;
         img.onerror = rej;
       });
-      const { landmarker } = await getImageLandmarker();
-      const result = landmarker.detect(img);
-      const landmarks = result?.faceLandmarks?.[0];
+
+      // Tente GPU puis CPU.
+      let landmarks: any = null;
+      for (const delegate of ["GPU", "CPU"] as const) {
+        try {
+          const { landmarker } = await getImageLandmarker(delegate);
+          const result = landmarker.detect(img);
+          landmarks = result?.faceLandmarks?.[0];
+          if (landmarks) break;
+        } catch {
+          /* essaie le délégué suivant */
+        }
+      }
       if (!landmarks) {
         setStatus("error");
         setError("Aucun visage détecté sur cette photo. Réessayez avec une photo de face, bien éclairée.");
@@ -216,16 +249,8 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
   return (
     <div>
       <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
-        <video
-          ref={videoRef}
-          className="absolute inset-0 h-full w-full -scale-x-100 object-cover"
-          playsInline
-          muted
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 h-full w-full -scale-x-100 object-cover"
-        />
+        <video ref={videoRef} className="absolute inset-0 h-full w-full -scale-x-100 object-cover" playsInline muted />
+        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full -scale-x-100 object-cover" />
         {mode === "idle" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/60">
             <ScanFace className="h-12 w-12" />
@@ -241,7 +266,7 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
         {status === "scanning" && (
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
             <div className="flex items-center justify-between text-xs text-white">
-              <span>Maintenez votre visage face caméra…</span>
+              <span>{diag || "Maintenez votre visage face caméra…"}</span>
               <span>{progress}%</span>
             </div>
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/20">
@@ -274,6 +299,12 @@ export function FaceScanner({ onComplete }: { onComplete: (r: ScanResult) => voi
           </label>
           <Button variant="ghost" className="gap-2" onClick={() => setMode("manual")}>
             <SlidersHorizontal className="h-4 w-4" /> Choisir manuellement
+          </Button>
+        </div>
+      ) : status === "scanning" ? (
+        <div className="mt-4 flex justify-center">
+          <Button variant="ghost" size="sm" className="gap-2 text-muted" onClick={() => setMode("manual")}>
+            <SlidersHorizontal className="h-4 w-4" /> La détection bloque ? Choisir manuellement
           </Button>
         </div>
       ) : null}

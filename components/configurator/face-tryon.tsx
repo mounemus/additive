@@ -26,6 +26,9 @@ export function FaceTryon({
   const runningRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const lmRef = useRef<any>(null);
+  const noFaceRef = useRef(0);
+  const cpuTriedRef = useRef(false);
+  const switchingRef = useRef(false);
 
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
 
@@ -65,7 +68,21 @@ export function FaceTryon({
         }
         const landmarks = result?.faceLandmarks?.[0];
         const frame = frameImgRef.current;
-        if (landmarks && frame) {
+        if (!landmarks) {
+          noFaceRef.current += 1;
+          if (noFaceRef.current >= 40 && !cpuTriedRef.current && !switchingRef.current) {
+            cpuTriedRef.current = true;
+            switchingRef.current = true;
+            getFaceLandmarker("CPU")
+              .then(({ landmarker }) => {
+                lmRef.current = landmarker;
+                noFaceRef.current = 0;
+              })
+              .catch(() => {})
+              .finally(() => (switchingRef.current = false));
+          }
+        } else if (landmarks && frame) {
+          noFaceRef.current = 0;
           const W = canvas.width;
           const H = canvas.height;
           // Tempes gauche (127) et droite (356) → largeur + angle de la monture.
@@ -98,7 +115,9 @@ export function FaceTryon({
   const start = useCallback(async () => {
     setStatus("loading");
     try {
-      const { landmarker } = await getFaceLandmarker();
+      noFaceRef.current = 0;
+      cpuTriedRef.current = false;
+      const { landmarker } = await getFaceLandmarker("GPU");
       lmRef.current = landmarker;
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
