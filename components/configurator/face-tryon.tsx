@@ -35,7 +35,7 @@ export function FaceTryon({
   const cpuTriedRef = useRef(false);
   const switchingRef = useRef(false);
   const lmRef = useRef<any>(null);
-  const smoothRef = useRef<{ cx: number; cy: number; w: number; a: number } | null>(null);
+  const filtersRef = useRef<ReturnType<typeof makeFilters> | null>(null);
 
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
   const [frameReady, setFrameReady] = useState(false);
@@ -84,12 +84,16 @@ export function FaceTryon({
       const H = (canvas.height = video.videoHeight);
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        // Vue NON miroir : même orientation que la réalité / le portrait porté.
-        ctx.drawImage(video, 0, 0, W, H);
+        const ts = performance.now();
+        // Vue MIROIR (selfie) : mouvement naturel pour l'utilisateur.
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, -W, 0, W, H);
+        ctx.restore();
 
         let result: any = null;
         try {
-          result = lm.detectForVideo(video, performance.now());
+          result = lm.detectForVideo(video, ts);
         } catch {
           result = null;
         }
@@ -110,8 +114,8 @@ export function FaceTryon({
           }
         } else if (frame) {
           noFaceRef.current = 0;
-          // Coordonnées directes (pas de miroir).
-          const p = (i: number) => ({ x: landmarks[i].x * W, y: landmarks[i].y * H });
+          // Coordonnées en MIROIR (x → W - x) pour coller à la vidéo selfie.
+          const p = (i: number) => ({ x: W - landmarks[i].x * W, y: landmarks[i].y * H });
           const tL = p(234);
           const tR = p(454);
           const eL = p(33);
@@ -121,19 +125,20 @@ export function FaceTryon({
           const cy = (eL.y + eR.y) / 2;
           const a = Math.atan2(tR.y - tL.y, tR.x - tL.x);
 
-          const s = smoothRef.current;
-          const k = 0.4;
-          const sm = s
-            ? { cx: s.cx + (cx - s.cx) * k, cy: s.cy + (cy - s.cy) * k, w: s.w + (targetW - s.w) * k, a: s.a + (a - s.a) * k }
-            : { cx, cy, w: targetW, a };
-          smoothRef.current = sm;
+          // Filtre One-Euro : stable à l'arrêt, réactif en mouvement.
+          if (!filtersRef.current) filtersRef.current = makeFilters();
+          const f = filtersRef.current;
+          const scx = f.cx(cx, ts);
+          const scy = f.cy(cy, ts);
+          const sw = f.w(targetW, ts);
+          const sa = f.a(a, ts);
 
           const ratio = frame.naturalHeight / frame.naturalWidth;
-          const h = sm.w * ratio;
+          const h = sw * ratio;
           ctx.save();
-          ctx.translate(sm.cx, sm.cy);
-          ctx.rotate(sm.a);
-          ctx.drawImage(frame, -sm.w / 2, -h / 2, sm.w, h);
+          ctx.translate(scx, scy);
+          ctx.rotate(sa);
+          ctx.drawImage(frame, -sw / 2, -h / 2, sw, h);
           ctx.restore();
         }
       }
@@ -146,11 +151,11 @@ export function FaceTryon({
     try {
       noFaceRef.current = 0;
       cpuTriedRef.current = false;
-      smoothRef.current = null;
+      filtersRef.current = makeFilters();
       const { landmarker } = await getFaceLandmarker("GPU");
       lmRef.current = landmarker;
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -222,6 +227,43 @@ export function FaceTryon({
       )}
     </div>
   );
+}
+
+// ── Filtre One-Euro : suivi facial stable et réactif ────────────────────────
+// (lisse fortement les micro-tremblements à l'arrêt, suit vite en mouvement)
+function oneEuro(minCutoff: number, beta: number, dCutoff = 1) {
+  let xPrev: number | null = null;
+  let dxPrev = 0;
+  let tPrev = 0;
+  const alpha = (cutoff: number, dt: number) => {
+    const r = 2 * Math.PI * cutoff * dt;
+    return r / (r + 1);
+  };
+  return (x: number, t: number) => {
+    if (xPrev === null) {
+      xPrev = x;
+      tPrev = t;
+      return x;
+    }
+    const dt = Math.min(Math.max((t - tPrev) / 1000, 1e-3), 0.1);
+    tPrev = t;
+    const dx = (x - xPrev) / dt;
+    const aD = alpha(dCutoff, dt);
+    dxPrev = aD * dx + (1 - aD) * dxPrev;
+    const cutoff = minCutoff + beta * Math.abs(dxPrev);
+    const a = alpha(cutoff, dt);
+    xPrev = a * x + (1 - a) * xPrev;
+    return xPrev;
+  };
+}
+
+function makeFilters() {
+  return {
+    cx: oneEuro(1.6, 0.5),
+    cy: oneEuro(1.6, 0.5),
+    w: oneEuro(1.0, 0.35),
+    a: oneEuro(1.0, 0.5),
+  };
 }
 
 // ── Préparation de la façade : détourage blanc + rognage alpha ───────────────
