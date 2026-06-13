@@ -357,12 +357,12 @@ export const PRODUCTS: StaticProduct[] = [
 /** Contenus éditoriaux administrables (clés SiteContent). */
 export const SITE_CONTENT: Record<string, unknown> = {
   hero: {
-    eyebrow: "Lunetterie additive — Montréal",
-    title: "Des lunettes générées pour votre visage, imprimées pour votre style.",
+    eyebrow: "ADDITIVE EYEWEAR — Montréal",
+    title: "Lunettes imprimées en 3D. Conçues autour de vous.",
     subtitle:
-      "ADDITIVE conçoit des montures modulaires imprimées en 3D : design paramétrique, nylon PA12, personnalisation morphologique. Une nouvelle génération de lunettes, fabriquée à la demande.",
-    ctaPrimary: "Explorer la collection",
-    ctaSecondary: "Créer ma monture",
+      "Des montures légères, modulaires et personnalisables, créées à Montréal et fabriquées à la demande.",
+    ctaPrimary: "Créer mes lunettes",
+    ctaSecondary: "Explorer les collections",
   },
   slogans: [
     "Des lunettes générées pour votre visage, imprimées pour votre style.",

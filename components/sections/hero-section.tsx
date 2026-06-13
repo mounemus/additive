@@ -92,7 +92,7 @@ export function HeroSection({ content }: { content: HeroContent }) {
           className="mt-10 flex flex-col gap-4 sm:flex-row"
         >
           <MagneticButton>
-            <Link href="/collections">
+            <Link href="/personnalisation">
               <Button variant="light" size="lg" className="gap-2">
                 {content.ctaPrimary}
                 <ArrowRight className="h-4 w-4" />
@@ -100,7 +100,7 @@ export function HeroSection({ content }: { content: HeroContent }) {
             </Link>
           </MagneticButton>
           <MagneticButton>
-            <Link href="/personnalisation">
+            <Link href="/collections">
               <Button
                 variant="outline"
                 size="lg"

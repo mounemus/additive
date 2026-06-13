@@ -7,6 +7,8 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { CustomizationSteps } from "@/components/sections/customization-steps";
 import { TechnologySection } from "@/components/sections/technology-section";
 import { ManifestoSection } from "@/components/sections/manifesto-section";
+import { ManifestoBand } from "@/components/sections/manifesto-band";
+import { ProcessSequence } from "@/components/sections/process-sequence";
 import { CTASection } from "@/components/sections/cta-section";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -16,7 +18,7 @@ import { getCollections, getProducts, getContent } from "@/lib/catalog";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [hero, brand, technology, cta, collections, featured] =
+  const [hero, technology, cta, collections, featured] =
     await Promise.all([
       getContent<{
         eyebrow: string;
@@ -25,7 +27,6 @@ export default async function HomePage() {
         ctaPrimary: string;
         ctaSecondary: string;
       }>("hero"),
-      getContent<{ positioning: string; taglineFr: string }>("brand"),
       getContent<{ title: string; intro: string; blocks: { title: string; body: string }[] }>(
         "technology"
       ),
@@ -49,23 +50,8 @@ export default async function HomePage() {
         ]}
       />
 
-      {/* 2. Présentation de la marque */}
-      <section className="py-24 md:py-32">
-        <div className="container">
-          <FadeIn>
-            <p className="eyebrow mb-4">La marque</p>
-          </FadeIn>
-          <AnimatedText
-            text={brand.taglineFr}
-            className="max-w-4xl font-display text-display-lg font-bold"
-          />
-          <FadeIn delay={0.25}>
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted">
-              {brand.positioning}
-            </p>
-          </FadeIn>
-        </div>
-      </section>
+      {/* 2. Manifeste de marque — Votre visage n'est pas standard */}
+      <ManifestoBand />
 
       {/* 3. Collections principales */}
       <section className="pb-24 md:pb-32">
@@ -96,10 +82,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 4. Bloc personnalisation */}
+      {/* 4. Séquence process — SCAN → DESIGN → PRINT → FINISH → WEAR */}
+      <ProcessSequence />
+
+      {/* 5. Bloc personnalisation */}
       <CustomizationSteps compact />
 
-      {/* 5. Technologie */}
+      {/* 6. Technologie */}
       <TechnologySection content={technology} compact />
 
       {/* 6. Produits vedettes */}
