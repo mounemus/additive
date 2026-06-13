@@ -52,7 +52,6 @@ import {
   FACE_SHAPES,
   TAG_LABELS,
   answersToProfile,
-  profilePalette,
   type ConfiguratorStep,
   type Boldness,
   type StyleTag,
@@ -127,6 +126,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   const [portraitError, setPortraitError] = useState<string | null>(null);
   const [tryonMode, setTryonMode] = useState<"studio" | "live">("studio");
   const [overlay, setOverlay] = useState<{ image: string; bg: "transparent" | "white" } | null>(null);
+  const [overlayLoading, setOverlayLoading] = useState(false);
   const overlayForRef = useRef<string | null>(null);
 
   // Devis
@@ -151,7 +151,6 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
 
   const stepIndex = STEP_ORDER.indexOf(step);
   const profile = useMemo(() => answersToProfile(answers), [answers]);
-  const palette = useMemo(() => profilePalette(profile), [profile]);
 
   // Une photo existe-t-elle quelque part ? (pilote « Supprimer ma photo »)
   const hasPhoto = Boolean(scan?.photoDataUrl || snapshot || portrait);
@@ -253,12 +252,14 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     };
   }, [step, selected, boldness, opts]);
 
-  // ── Façade pour l'essayage AR (générée pour le concept choisi) ────────────
+  // ── Façade pour l'essayage AR — PRÉ-générée dès le choix du concept ───────
+  // (lancée tôt pour qu'elle soit prête quand l'utilisateur atteint l'essayage)
   useEffect(() => {
-    if (step !== "tryon" || !selected) return;
+    if (!selected) return;
     if (overlayForRef.current === selected.id) return;
     overlayForRef.current = selected.id;
     setOverlay(null);
+    setOverlayLoading(true);
     fetch("/api/configurator/frame-overlay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -266,8 +267,9 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setOverlay({ image: data.image, bg: data.bg }))
-      .catch(() => setOverlay(null)); // repli : FaceTryon utilise la façade SVG
-  }, [step, selected, profile]);
+      .catch(() => setOverlay(null)) // repli : FaceTryon utilise une façade neutre
+      .finally(() => setOverlayLoading(false));
+  }, [selected, profile]);
 
   // ── Suppression des photos (confidentialité) ──────────────────────────────
   function deletePhotos() {
@@ -680,9 +682,9 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                     </button>
                   ) : (
                     <FaceTryon
-                      paletteColors={palette.colors}
                       frameSrc={overlay?.image}
                       frameBg={overlay?.bg}
+                      loading={overlayLoading}
                       onCapture={(d) => setSnapshot(d)}
                     />
                   )}

@@ -6,21 +6,23 @@ import { Button } from "@/components/ui/button";
 import { getFaceLandmarker } from "@/lib/face/mediapipe";
 import { demoFrameOverlaySvg } from "@/lib/ai/demo-visuals";
 
+// Façade neutre (gris foncé) en attendant la vraie monture — jamais orange.
+const NEUTRAL_FRAME = demoFrameOverlaySvg(["#e7e7e7", "#2b2b2b", "#111111"]);
+
 /**
  * Essayage AR « Essayer sur mon visage » : la façade transparente du concept
  * (vrai PNG IA, détouré + rogné sur l'alpha) est ancrée en temps réel aux
  * tempes (234/454) et à la ligne des yeux (33/263), vue miroir selfie.
- * « Capturer mon essayage » enregistre une photo souvenir. 100 % local.
  */
 export function FaceTryon({
-  paletteColors,
   frameSrc,
   frameBg,
+  loading,
   onCapture,
 }: {
-  paletteColors: string[];
   frameSrc?: string | null;
   frameBg?: "transparent" | "white";
+  loading?: boolean;
   onCapture: (dataUrl: string) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -36,6 +38,7 @@ export function FaceTryon({
   const smoothRef = useRef<{ cx: number; cy: number; w: number; a: number } | null>(null);
 
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
+  const [frameReady, setFrameReady] = useState(false);
 
   const cleanup = useCallback(() => {
     runningRef.current = false;
@@ -46,17 +49,29 @@ export function FaceTryon({
 
   useEffect(() => cleanup, [cleanup]);
 
-  // Prépare la façade : détourage du blanc (Gemini) + rognage sur l'alpha.
+  // Prépare la façade : neutre tant que la vraie n'est pas là, puis bascule.
   useEffect(() => {
     let cancelled = false;
-    const src = frameSrc || demoFrameOverlaySvg(paletteColors);
-    prepareFrame(src, frameSrc ? frameBg : "transparent").then((img) => {
-      if (!cancelled && img) frameImgRef.current = img;
-    });
+    // Affiche d'abord la façade neutre pour ne jamais bloquer l'essayage.
+    if (!frameImgRef.current) {
+      prepareFrame(NEUTRAL_FRAME, "transparent").then((img) => {
+        if (!cancelled && img && !frameReady) frameImgRef.current = img;
+      });
+    }
+    if (frameSrc) {
+      setFrameReady(false);
+      prepareFrame(frameSrc, frameBg).then((img) => {
+        if (!cancelled && img) {
+          frameImgRef.current = img;
+          setFrameReady(true);
+        }
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [frameSrc, frameBg, paletteColors]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameSrc, frameBg]);
 
   const loop = useCallback(() => {
     const video = videoRef.current;
@@ -98,7 +113,6 @@ export function FaceTryon({
           }
         } else if (frame) {
           noFaceRef.current = 0;
-          // Coordonnées miroir (x → W - x).
           const p = (i: number) => ({ x: W - landmarks[i].x * W, y: landmarks[i].y * H });
           const tL = p(234);
           const tR = p(454);
@@ -109,7 +123,6 @@ export function FaceTryon({
           const cy = (eL.y + eR.y) / 2;
           const a = Math.atan2(tR.y - tL.y, tR.x - tL.x);
 
-          // Lissage exponentiel (0.4).
           const s = smoothRef.current;
           const k = 0.4;
           const sm = s
@@ -162,6 +175,8 @@ export function FaceTryon({
     onCapture(canvas.toDataURL("image/jpeg", 0.9));
   }
 
+  const preparing = Boolean(loading) || (Boolean(frameSrc) && !frameReady);
+
   return (
     <div>
       <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
@@ -183,6 +198,13 @@ export function FaceTryon({
             Caméra indisponible. Vous pouvez tout de même utiliser la vue studio.
           </div>
         )}
+        {status === "live" && preparing && (
+          <div className="absolute left-4 top-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white backdrop-blur">
+              <Loader2 className="h-3 w-3 animate-spin" /> Préparation de votre monture…
+            </span>
+          </div>
+        )}
       </div>
       <div className="mt-5 flex flex-wrap justify-center gap-3">
         {status !== "live" ? (
@@ -195,6 +217,11 @@ export function FaceTryon({
           </Button>
         )}
       </div>
+      {status === "idle" && preparing && (
+        <p className="mt-3 text-center text-xs text-muted">
+          <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Préparation de la monture du concept…
+        </p>
+      )}
     </div>
   );
 }
@@ -228,11 +255,10 @@ async function prepareFrame(
     try {
       data = ctx.getImageData(0, 0, w, h);
     } catch {
-      return img; // canvas teinté (CORS) → image brute
+      return img;
     }
     const px = data.data;
     if (bg === "white") {
-      // Détourage du fond blanc (seuil min-canal > 205, faible saturation).
       for (let i = 0; i < px.length; i += 4) {
         const r = px[i], g = px[i + 1], b = px[i + 2];
         const min = Math.min(r, g, b);
@@ -240,7 +266,6 @@ async function prepareFrame(
         if (min > 205 && max - min < 26) px[i + 3] = 0;
       }
     }
-    // Bornes alpha pour le rognage.
     let minX = w, minY = h, maxX = 0, maxY = 0, found = false;
     for (let y = 0; y < h; y += 1) {
       for (let x = 0; x < w; x += 1) {
