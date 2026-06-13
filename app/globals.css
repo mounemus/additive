@@ -3,29 +3,41 @@
 @tailwind utilities;
 
 :root {
-  --background: #f3f1ec;
-  --foreground: #111111;
-  --muted: #77736b;
+  /* Charte ADDITIVE — couleurs brutes */
+  --additive-blue: #1557ff;
+  --electric-blue: #276cff;
+  --ink: #0b0d10;
+  --graphite: #171a1f;
+  --off-white: #f3f2ed;
+  --paper: #faf9f5;
+  --silver: #c8cbd1;
+  --soft-gray: #e6e7e9;
+  --signal-orange: #ff5a36;
+
+  /* Rôles sémantiques (mode clair) */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --muted: #6a6f77;
   --surface: #ffffff;
-  --surface-dark: #151515;
-  --primary: #111111;
-  --accent-blue: #1f6fff;
-  --accent-orange: #ff6a2a;
-  --accent-silver: #d8d8d4;
-  --border: #dedbd2;
+  --surface-dark: var(--graphite);
+  --primary: var(--ink);
+  --accent-blue: var(--additive-blue);
+  --accent-orange: var(--signal-orange);
+  --accent-silver: var(--silver);
+  --border: var(--soft-gray);
 }
 
 .dark {
-  --background: #080808;
-  --foreground: #f4f1ea;
-  --muted: #9c968c;
-  --surface: #151515;
-  --surface-dark: #0d0d0d;
-  --primary: #f4f1ea;
-  --accent-blue: #4d8cff;
-  --accent-orange: #ff7a3d;
-  --accent-silver: #6f6f6a;
-  --border: #2a2a2a;
+  --background: var(--ink);
+  --foreground: var(--off-white);
+  --muted: #9aa0a8;
+  --surface: var(--graphite);
+  --surface-dark: #0d0f12;
+  --primary: var(--off-white);
+  --accent-blue: var(--electric-blue);
+  --accent-orange: var(--signal-orange);
+  --accent-silver: #6f747c;
+  --border: #232830;
 }
 
 @layer base {
@@ -51,14 +63,14 @@
   }
   /* Section sombre : ré-applique les variables dark localement */
   .section-dark {
-    --background: #080808;
-    --foreground: #f4f1ea;
-    --muted: #9c968c;
-    --surface: #151515;
-    --primary: #f4f1ea;
-    --accent-blue: #4d8cff;
-    --accent-orange: #ff7a3d;
-    --border: #2a2a2a;
+    --background: var(--ink);
+    --foreground: var(--off-white);
+    --muted: #9aa0a8;
+    --surface: var(--graphite);
+    --primary: var(--off-white);
+    --accent-blue: var(--electric-blue);
+    --accent-orange: var(--signal-orange);
+    --border: #232830;
     background: var(--background);
     color: var(--foreground);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ArrowUpRight } from "lucide-react";
@@ -21,11 +21,20 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
+  const lastYRef = useRef(0);
   const pathname = usePathname();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 24);
+      // Masque en descendant (au-delà du hero), réaffiche en remontant.
+      if (y > 120 && y > lastYRef.current + 6) setHidden(true);
+      else if (y < lastYRef.current - 6) setHidden(false);
+      lastYRef.current = y;
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -36,10 +45,11 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-500",
+        "fixed inset-x-0 top-0 z-50 transition-all duration-500 will-change-transform",
         scrolled
           ? "border-b border-border bg-background/85 backdrop-blur-xl"
-          : "bg-transparent"
+          : "bg-transparent",
+        hidden && !open ? "-translate-y-full" : "translate-y-0"
       )}
     >
       <div className="container flex h-16 items-center justify-between md:h-20">

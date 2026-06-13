@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
+import { NewsletterForm } from "@/components/layout/newsletter-form";
+import { LanguageSwitch } from "@/components/layout/language-switch";
 
 const FOOTER_COLUMNS = [
   {
@@ -23,7 +25,8 @@ const FOOTER_COLUMNS = [
   {
     title: "Services",
     links: [
-      { href: "/personnalisation", label: "Créer ma monture" },
+      { href: "/personnalisation", label: "Créer mes lunettes" },
+      { href: "/personnalisation/modulair", label: "Moduler mes lunettes" },
       { href: "/contact?type=partenariat", label: "Devenir détaillant" },
       { href: "/contact?type=presse", label: "Presse" },
     ],
@@ -33,7 +36,25 @@ const FOOTER_COLUMNS = [
 export function Footer() {
   return (
     <footer className="section-dark border-t border-border">
-      <div className="container py-16 md:py-20">
+      {/* Bandeau signature éditorial */}
+      <div className="container border-b border-border py-16 md:py-24">
+        <div className="grid items-end gap-10 md:grid-cols-[1.6fr_1fr]">
+          <p className="max-w-3xl text-balance font-display text-display-md font-bold leading-[1.05]">
+            Pas conçues pour tout le monde.
+            <br />
+            <span className="text-accent-blue">Conçues pour vous.</span>
+          </p>
+          <div>
+            <p className="eyebrow mb-4">Restez informé·e</p>
+            <NewsletterForm />
+            <p className="mt-3 text-xs text-muted">
+              Nouvelles collections, modules et coulisses d’atelier. Pas de spam.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="container py-14 md:py-16">
         <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="max-w-sm">
             <Logo />
@@ -68,9 +89,11 @@ export function Footer() {
 
         <div className="mt-14 flex flex-col gap-4 border-t border-border pt-8 text-xs text-muted md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} ADDITIVE. Tous droits réservés.</p>
-          <p className="font-display uppercase tracking-[0.3em]">
-            Design numérique · Fabrication additive · Identité personnelle
-          </p>
+          <div className="flex items-center gap-5">
+            <Link href="/contact" className="hover:text-foreground">Livraison &amp; retours</Link>
+            <Link href="/manifeste" className="hover:text-foreground">Confidentialité</Link>
+            <LanguageSwitch />
+          </div>
         </div>
       </div>
     </footer>
