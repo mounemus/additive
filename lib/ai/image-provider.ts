@@ -1,5 +1,6 @@
 import "server-only";
-import { getProvidersConfig, getProviderKey } from "@/lib/configurator-settings";
+import { getTaskConfig, getProviderKey } from "@/lib/configurator-settings";
+import type { ImageTask } from "@/content/configurator-defaults";
 
 /**
  * Abstraction multi-fournisseurs pour la génération d'images.
@@ -32,24 +33,27 @@ function dataUrlToBase64(dataUrl: string): { mime: string; b64: string } | null 
   return { mime: m[1], b64: m[2] };
 }
 
-export async function generateImage(req: ImageGenRequest): Promise<ImageGenResult> {
-  const cfg = await getProvidersConfig();
-  if (cfg.imageProvider === "demo") {
+export async function generateImage(
+  req: ImageGenRequest,
+  task: ImageTask
+): Promise<ImageGenResult> {
+  const { provider, model } = await getTaskConfig(task);
+  if (provider === "demo") {
     return { ok: false, error: "unavailable", detail: "demo mode" };
   }
-  const key = await getProviderKey(cfg.imageProvider);
+  const key = await getProviderKey(provider);
   if (!key) return { ok: false, error: "unavailable", detail: "no key" };
 
   try {
-    switch (cfg.imageProvider) {
+    switch (provider) {
       case "openai":
-        return await openai(req, key, cfg.imageModel);
+        return await openai(req, key, model);
       case "gemini":
-        return await gemini(req, key, cfg.imageModel);
+        return await gemini(req, key, model);
       case "stability":
-        return await stability(req, key);
+        return await stability(req, key, model);
       case "replicate":
-        return await replicate(req, key, cfg.imageModel);
+        return await replicate(req, key, model);
       default:
         return { ok: false, error: "unavailable", detail: "unknown provider" };
     }
@@ -149,41 +153,66 @@ export async function generateWornPortrait(opts: {
   photo: string;
   conceptImage?: string;
 }): Promise<ImageGenResult> {
-  const geminiKey = await getProviderKey("gemini");
-  if (geminiKey) {
-    const refs = [opts.photo];
-    if (opts.conceptImage && opts.conceptImage.startsWith("data:")) refs.push(opts.conceptImage);
-    const r = await geminiGenerate(opts.prompt, refs, geminiKey, "gemini-2.5-flash-image");
-    if (r.ok) return r;
-  }
-  const openaiKey = await getProviderKey("openai");
-  if (openaiKey) {
-    try {
-      const blob = dataUrlToBlob(opts.photo);
-      if (!blob) return { ok: false, error: "unavailable", detail: "bad photo" };
-      const form = new FormData();
-      form.append("model", "gpt-image-1");
-      form.append("image", blob, "photo.png");
-      form.append("prompt", opts.prompt);
-      form.append("size", "1024x1024");
-      form.append("input_fidelity", "high");
-      const res = await fetch("https://api.openai.com/v1/images/edits", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${openaiKey}` },
-        body: form,
-      });
-      if (!res.ok) {
-        console.error("[image-provider] openai edits", res.status, await safeText(res));
-        return { ok: false, error: "unavailable", detail: `http ${res.status}` };
-      }
-      const data = await res.json();
-      const b64 = data?.data?.[0]?.b64_json;
-      if (b64) return { ok: true, dataUrl: `data:image/png;base64,${b64}` };
-    } catch (e) {
-      console.error("[image-provider] openai edits error", e);
+  const { provider, model } = await getTaskConfig("portrait");
+  // Ordre d'essai : provider choisi en tête, puis l'autre en repli.
+  const order = provider === "openai" ? ["openai", "gemini"] : ["gemini", "openai"];
+
+  for (const p of order) {
+    if (p === "gemini") {
+      const key = await getProviderKey("gemini");
+      if (!key) continue;
+      const refs = [opts.photo];
+      if (opts.conceptImage && opts.conceptImage.startsWith("data:")) refs.push(opts.conceptImage);
+      const r = await geminiGenerate(
+        opts.prompt,
+        refs,
+        key,
+        provider === "gemini" ? model : "gemini-2.5-flash-image"
+      );
+      if (r.ok) return r;
+    } else {
+      const key = await getProviderKey("openai");
+      if (!key) continue;
+      const r = await openaiEdit(opts.prompt, opts.photo, key, provider === "openai" ? model : "gpt-image-1");
+      if (r.ok) return r;
     }
   }
   return { ok: false, error: "unavailable", detail: "no portrait provider" };
+}
+
+/** Édition d'image OpenAI (préserve la photo d'entrée, input_fidelity high). */
+async function openaiEdit(
+  prompt: string,
+  photo: string,
+  key: string,
+  model: string
+): Promise<ImageGenResult> {
+  try {
+    const blob = dataUrlToBlob(photo);
+    if (!blob) return { ok: false, error: "unavailable", detail: "bad photo" };
+    const form = new FormData();
+    form.append("model", model && model.startsWith("gpt-image") ? model : "gpt-image-1");
+    form.append("image", blob, "photo.png");
+    form.append("prompt", prompt);
+    form.append("size", "1024x1024");
+    form.append("input_fidelity", "high");
+    const res = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+      body: form,
+    });
+    if (!res.ok) {
+      console.error("[image-provider] openai edits", res.status, await safeText(res));
+      return { ok: false, error: "unavailable", detail: `http ${res.status}` };
+    }
+    const data = await res.json();
+    const b64 = data?.data?.[0]?.b64_json;
+    if (b64) return { ok: true, dataUrl: `data:image/png;base64,${b64}` };
+    return { ok: false, error: "unavailable", detail: "empty" };
+  } catch (e) {
+    console.error("[image-provider] openai edits error", e);
+    return { ok: false, error: "unavailable", detail: "error" };
+  }
 }
 
 /**
@@ -195,50 +224,79 @@ export async function generateWornPortrait(opts: {
 export async function generateFrameOverlay(opts: {
   prompt: string;
 }): Promise<{ ok: true; dataUrl: string; bg: "transparent" | "white" } | { ok: false }> {
-  const openaiKey = await getProviderKey("openai");
-  if (openaiKey) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gpt-image-1",
-          prompt: opts.prompt,
-          size: "1024x1024",
-          background: "transparent",
-          n: 1,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const b64 = data?.data?.[0]?.b64_json;
-        if (b64) return { ok: true, dataUrl: `data:image/png;base64,${b64}`, bg: "transparent" };
-      } else {
-        console.error("[image-provider] overlay openai", res.status, await safeText(res));
-      }
-    } catch (e) {
-      console.error("[image-provider] overlay openai error", e);
+  const { provider } = await getTaskConfig("frameOverlay");
+  const order = provider === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+
+  for (const p of order) {
+    if (p === "openai") {
+      const r = await overlayOpenAI(opts.prompt);
+      if (r) return r;
+    } else {
+      const r = await overlayGemini(opts.prompt);
+      if (r) return r;
     }
-  }
-  const geminiKey = await getProviderKey("gemini");
-  if (geminiKey) {
-    const r = await geminiGenerate(
-      `${opts.prompt} Fond blanc pur uni #FFFFFF, sans ombre, sans décor.`,
-      [],
-      geminiKey,
-      "gemini-2.5-flash-image"
-    );
-    if (r.ok) return { ok: true, dataUrl: r.dataUrl, bg: "white" };
   }
   return { ok: false };
 }
 
+async function overlayOpenAI(
+  prompt: string
+): Promise<{ ok: true; dataUrl: string; bg: "transparent" } | null> {
+  const key = await getProviderKey("openai");
+  if (!key) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt,
+        size: "1024x1024",
+        background: "transparent",
+        n: 1,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const b64 = data?.data?.[0]?.b64_json;
+      if (b64) return { ok: true, dataUrl: `data:image/png;base64,${b64}`, bg: "transparent" };
+    } else {
+      console.error("[image-provider] overlay openai", res.status, await safeText(res));
+    }
+  } catch (e) {
+    console.error("[image-provider] overlay openai error", e);
+  }
+  return null;
+}
+
+async function overlayGemini(
+  prompt: string
+): Promise<{ ok: true; dataUrl: string; bg: "white" } | null> {
+  const key = await getProviderKey("gemini");
+  if (!key) return null;
+  const r = await geminiGenerate(
+    `${prompt} Fond blanc pur uni #FFFFFF, sans ombre, sans décor.`,
+    [],
+    key,
+    "gemini-2.5-flash-image"
+  );
+  if (r.ok) return { ok: true, dataUrl: r.dataUrl, bg: "white" };
+  return null;
+}
+
 // ── Stability AI ─────────────────────────────────────────────────────────────
-async function stability(req: ImageGenRequest, key: string): Promise<ImageGenResult> {
+async function stability(req: ImageGenRequest, key: string, model?: string): Promise<ImageGenResult> {
+  const endpoint =
+    model === "stable-image-ultra"
+      ? "ultra"
+      : model === "sd3.5-large"
+        ? "sd3"
+        : "core";
   const form = new FormData();
   form.append("prompt", req.prompt);
   form.append("output_format", "png");
-  const res = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
+  if (endpoint === "sd3") form.append("model", "sd3.5-large");
+  const res = await fetch(`https://api.stability.ai/v2beta/stable-image/generate/${endpoint}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, Accept: "image/*" },
     body: form,

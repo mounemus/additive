@@ -33,6 +33,7 @@ import {
   Wand2,
   Camera,
   Ruler,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,11 +202,12 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
       .finally(() => setMoodboardLoading(false));
   }, [step, profile, scan]);
 
-  // ── Concepts (à l'entrée de l'étape) ──────────────────────────────────────
-  useEffect(() => {
-    if (step !== "concepts" || conceptsDone.current || !profile.length) return;
+  // ── Concepts (génération + régénération) ──────────────────────────────────
+  const loadConcepts = useCallback(() => {
+    if (!profile.length) return;
     conceptsDone.current = true;
     setConceptsLoading(true);
+    setSelected(null);
     fetch("/api/configurator/concepts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -220,7 +222,17 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
       .then((data) => setConcepts(data.concepts ?? []))
       .catch(() => setConcepts([]))
       .finally(() => setConceptsLoading(false));
-  }, [step, profile, scan, boldness, moodboard]);
+  }, [profile, scan, boldness, moodboard]);
+
+  useEffect(() => {
+    if (step === "concepts" && !conceptsDone.current) loadConcepts();
+  }, [step, loadConcepts]);
+
+  // Changer de concept réinitialise le portrait (régénérable pour le nouveau).
+  useEffect(() => {
+    setPortrait(null);
+    setPortraitError(null);
+  }, [selected?.id]);
 
   // ── Devis (recalculé serveur à chaque variation) ──────────────────────────
   useEffect(() => {
@@ -604,12 +616,19 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
 
           {step === "concepts" && (
             <div>
-              <h2 className="font-display text-2xl font-bold md:text-3xl">Trois concepts pour vous</h2>
-              <p className="mt-3 max-w-2xl text-muted">
-                Générés à partir de votre moodboard et de votre morphologie, triés
-                par taux de correspondance. La collection existante inspire, sans
-                jamais être recopiée.
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-2xl font-bold md:text-3xl">Trois concepts pour vous</h2>
+                  <p className="mt-3 max-w-2xl text-muted">
+                    Générés à partir de votre moodboard et de votre morphologie, triés
+                    par taux de correspondance. La collection existante inspire, sans
+                    jamais être recopiée.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="gap-2" onClick={loadConcepts} disabled={conceptsLoading}>
+                  <RefreshCw className={cn("h-4 w-4", conceptsLoading && "animate-spin")} /> Régénérer
+                </Button>
+              </div>
               {conceptsLoading ? (
                 <div className="mt-8 flex items-center justify-center rounded-2xl border border-border bg-foreground/[0.03] p-16 text-muted">
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Génération de vos concepts…
@@ -677,9 +696,14 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                       cette monture — votre visage est strictement préservé.
                     </p>
                     {portrait ? (
-                      <button onClick={() => setLightbox(portrait)} className="relative mt-4 block aspect-square w-full overflow-hidden rounded-xl border border-border">
-                        <Image src={portrait} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
-                      </button>
+                      <>
+                        <button onClick={() => setLightbox(portrait)} className="relative mt-4 block aspect-square w-full overflow-hidden rounded-xl border border-border">
+                          <Image src={portrait} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                        </button>
+                        <Button variant="outline" size="sm" onClick={generatePortrait} disabled={portraitLoading} className="mt-3 gap-2">
+                          <RefreshCw className={cn("h-4 w-4", portraitLoading && "animate-spin")} /> Régénérer le portrait
+                        </Button>
+                      </>
                     ) : (
                       <Button
                         onClick={generatePortrait}

@@ -41,11 +41,14 @@ export async function POST(req: Request) {
   const enriched = await Promise.all(
     concepts.map(async (concept, i) => {
       const prompt = buildConceptPromptFr(concept, styleTags, faceShape);
-      const result = await generateImage({
-        prompt,
-        referenceImages: moodboard ? [moodboard] : undefined,
-        size: "1024x1024",
-      });
+      const result = await generateImage(
+        {
+          prompt,
+          referenceImages: moodboard ? [moodboard] : undefined,
+          size: "1024x1024",
+        },
+        "concepts"
+      );
       const image = result.ok
         ? result.dataUrl
         : demoConceptSvg(concept.label, palette.colors, 3 + i);

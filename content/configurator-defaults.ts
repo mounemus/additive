@@ -84,20 +84,72 @@ export const PROVIDER_CATALOG: {
   { id: "openai-vision", label: "OpenAI Vision", slot: "vision", models: ["gpt-4o-mini"], keyEnv: "OPENAI_API_KEY" },
 ];
 
+// Modèles à jour par fournisseur (alimentent les menus déroulants admin).
+export const MODEL_CATALOG: Record<string, { id: string; label: string }[]> = {
+  openai: [
+    { id: "gpt-image-1", label: "GPT Image 1 (édition + transparence)" },
+    { id: "dall-e-3", label: "DALL·E 3" },
+  ],
+  gemini: [
+    { id: "gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image — « Nano Banana »" },
+    { id: "gemini-2.0-flash-preview-image-generation", label: "Gemini 2.0 Flash Image" },
+  ],
+  stability: [
+    { id: "stable-image-ultra", label: "Stable Image Ultra" },
+    { id: "stable-image-core", label: "Stable Image Core" },
+    { id: "sd3.5-large", label: "Stable Diffusion 3.5 Large" },
+  ],
+  replicate: [
+    { id: "black-forest-labs/flux-1.1-pro-ultra", label: "FLUX 1.1 Pro Ultra" },
+    { id: "black-forest-labs/flux-1.1-pro", label: "FLUX 1.1 Pro" },
+    { id: "black-forest-labs/flux-dev", label: "FLUX Dev" },
+  ],
+};
+
+// Tâches IA du configurateur, avec les fournisseurs réellement capables.
+//  - frameOverlay exige une transparence (OpenAI alpha natif, Gemini fond
+//    blanc détouré) ;
+//  - portrait exige une ÉDITION de la photo (OpenAI /images/edits, Gemini).
+export type ImageTask = "moodboard" | "concepts" | "frameOverlay" | "portrait";
+
+export const IMAGE_TASKS: {
+  id: ImageTask;
+  label: string;
+  hint: string;
+  providers: string[];
+}[] = [
+  { id: "moodboard", label: "Moodboard", hint: "Planche d'ambiance éditoriale", providers: ["openai", "gemini", "stability", "replicate"] },
+  { id: "concepts", label: "Concepts", hint: "3 montures (Gemini = conditionné sur le moodboard)", providers: ["openai", "gemini", "stability", "replicate"] },
+  { id: "frameOverlay", label: "Façade essayage", hint: "PNG transparent pour l'essayage AR", providers: ["openai", "gemini"] },
+  { id: "portrait", label: "Portrait porté", hint: "Édite la vraie photo — identité préservée", providers: ["openai", "gemini"] },
+];
+
+export type TaskAssignment = { provider: string; model: string };
+
 export type ProvidersConfig = {
-  // Fournisseur actif pour chaque rôle (génération d'images, analyse vision).
-  imageProvider: string; // id du catalogue, ou "demo"
-  imageModel: string;
+  // Affectation fournisseur + modèle par tâche.
+  tasks: Record<ImageTask, TaskAssignment>;
   visionProvider: string;
   // Clés (jamais renvoyées au client — masquées en "••••").
   keys: Record<string, string>;
+  // Hérités (compat ascendante / repli des tâches non définies).
+  imageProvider?: string;
+  imageModel?: string;
 };
 
 export const DEFAULT_PROVIDERS: ProvidersConfig = {
-  imageProvider: "demo",
-  imageModel: "gpt-image-1",
+  tasks: {
+    // Portrait + façade par défaut sur OpenAI (édition = identité fiable,
+    // transparence native). Moodboard/concepts sur OpenAI également.
+    moodboard: { provider: "demo", model: "gpt-image-1" },
+    concepts: { provider: "demo", model: "gpt-image-1" },
+    frameOverlay: { provider: "demo", model: "gpt-image-1" },
+    portrait: { provider: "demo", model: "gpt-image-1" },
+  },
   visionProvider: "demo",
   keys: {},
+  imageProvider: "demo",
+  imageModel: "gpt-image-1",
 };
 
 // ── Palettes & matières (pilotent le moodboard et les concepts de démo) ──────

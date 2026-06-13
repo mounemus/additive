@@ -78,8 +78,12 @@ export const tempPhotoSchema = z.object({
 
 // ── Réglages admin du configurateur ─────────────────────────────────────────
 export const providersAdminSchema = z.object({
-  imageProvider: z.string().max(40).optional(),
-  imageModel: z.string().max(80).optional(),
+  tasks: z
+    .record(
+      z.string(),
+      z.object({ provider: z.string().max(40), model: z.string().max(120) })
+    )
+    .optional(),
   visionProvider: z.string().max(40).optional(),
   keys: z.record(z.string(), z.string().max(400)).optional(),
 });

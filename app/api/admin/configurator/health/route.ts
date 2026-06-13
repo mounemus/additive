@@ -21,14 +21,15 @@ export async function GET() {
   }
 
   const status = await getProvidersStatus();
+  const moodboardProvider = status.tasks?.moodboard?.provider ?? "demo";
   const imageConfigured = status.providers.some(
-    (p) => p.slot === "image" && p.id === status.imageProvider && p.configured
+    (p) => p.slot === "image" && p.id === moodboardProvider && p.configured
   );
 
   return NextResponse.json({
     database: dbOk,
     imageGeneration: imageConfigured,
-    activeImageProvider: status.imageProvider,
+    activeImageProvider: moodboardProvider,
     pendingRequests,
     tempPhotos,
     timestamp: new Date().toISOString(),

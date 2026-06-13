@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   const palette = profilePalette(styleTags);
 
   const prompt = buildMoodboardPromptFr(styleTags, faceShape);
-  const result = await generateImage({ prompt, size: "1536x1024" });
+  const result = await generateImage({ prompt, size: "1536x1024" }, "moodboard");
 
   if (result.ok) {
     return NextResponse.json({

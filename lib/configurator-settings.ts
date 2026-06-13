@@ -7,6 +7,8 @@ import {
   PROVIDER_CATALOG,
   type PricingConfig,
   type ProvidersConfig,
+  type TaskAssignment,
+  type ImageTask,
 } from "@/content/configurator-defaults";
 
 /**
@@ -14,7 +16,7 @@ import {
  *
  * RÈGLE NON NÉGOCIABLE : les clés de fournisseurs IA ne sont JAMAIS
  * renvoyées au client. Les fonctions "public" exposent uniquement des
- * libellés, des prix d'options et des statuts (configuré / non configuré).
+ * libellés, des prix d'options, des affectations de tâche et des statuts.
  */
 
 const KEY_PRICING = "configurator.pricing";
@@ -44,6 +46,21 @@ export async function getProvidersConfig(): Promise<ProvidersConfig> {
   return readContent<ProvidersConfig>(KEY_PROVIDERS, DEFAULT_PROVIDERS);
 }
 
+/**
+ * Affectation (fournisseur + modèle) résolue pour une tâche, avec repli sur la
+ * config héritée `imageProvider` quand la tâche n'a pas d'override explicite.
+ * Évite de casser une config existante qui ne déclarait qu'`imageProvider`.
+ */
+export async function getTaskConfig(task: ImageTask): Promise<TaskAssignment> {
+  const cfg = await getProvidersConfig();
+  const t = cfg.tasks?.[task];
+  if (t?.provider && t.provider !== "demo") return { provider: t.provider, model: t.model };
+  if (cfg.imageProvider && cfg.imageProvider !== "demo") {
+    return { provider: cfg.imageProvider, model: cfg.imageModel ?? t?.model ?? "gpt-image-1" };
+  }
+  return { provider: t?.provider ?? "demo", model: t?.model ?? "gpt-image-1" };
+}
+
 /** Récupère une clé : config admin d'abord, variable d'environnement sinon. */
 export async function getProviderKey(providerId: string): Promise<string | null> {
   const cfg = await getProvidersConfig();
@@ -54,10 +71,7 @@ export async function getProviderKey(providerId: string): Promise<string | null>
   return fromEnv && fromEnv.trim() ? fromEnv.trim() : null;
 }
 
-/**
- * Vue SÛRE des providers pour l'admin : statut configuré + clé masquée,
- * jamais la clé en clair.
- */
+/** Vue SÛRE pour l'admin : statut des clés + affectations par tâche. */
 export async function getProvidersStatus() {
   const cfg = await getProvidersConfig();
   const providers = PROVIDER_CATALOG.map((p) => {
@@ -72,20 +86,19 @@ export async function getProvidersStatus() {
       masked: key ? `${"•".repeat(Math.max(0, key.length - 4))}${key.slice(-4)}` : "",
     };
   });
-  return {
-    imageProvider: cfg.imageProvider,
-    imageModel: cfg.imageModel,
-    visionProvider: cfg.visionProvider,
-    providers,
-  };
+  // Affectations résolues (avec repli hérité).
+  const tasks: Record<string, TaskAssignment> = {};
+  for (const t of ["moodboard", "concepts", "frameOverlay", "portrait"] as ImageTask[]) {
+    tasks[t] = await getTaskConfig(t);
+  }
+  return { tasks, visionProvider: cfg.visionProvider, providers };
 }
 
-/** Indique au client si la génération IA est active, sans révéler de provider. */
+/** Indique au client si la génération IA est active (sans révéler de provider). */
 export async function isImageGenerationActive(): Promise<boolean> {
-  const cfg = await getProvidersConfig();
-  if (cfg.imageProvider === "demo") return false;
-  const key = await getProviderKey(cfg.imageProvider);
-  return Boolean(key);
+  const t = await getTaskConfig("moodboard");
+  if (t.provider === "demo") return false;
+  return Boolean(await getProviderKey(t.provider));
 }
 
 export async function savePricingConfig(value: PricingConfig) {
@@ -113,11 +126,15 @@ export async function saveProvidersConfig(partial: Partial<ProvidersConfig>) {
       if (val && val.trim()) keys[id] = val.trim();
     }
   }
+  // Fusion des tâches.
+  const tasks = { ...(current.tasks ?? DEFAULT_PROVIDERS.tasks), ...(partial.tasks ?? {}) };
   const next: ProvidersConfig = {
-    imageProvider: partial.imageProvider ?? current.imageProvider,
-    imageModel: partial.imageModel ?? current.imageModel,
+    tasks,
     visionProvider: partial.visionProvider ?? current.visionProvider,
     keys,
+    // On retire les champs hérités une fois les tâches définies explicitement.
+    imageProvider: undefined,
+    imageModel: undefined,
   };
   await db.siteContent.upsert({
     where: { key: KEY_PROVIDERS },
