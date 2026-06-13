@@ -27,6 +27,7 @@ export type CatalogProduct = {
   dimensions: string | null;
   features: string[];
   isFeatured: boolean;
+  model3dUrl: string | null;
   image: string;
   images: { url: string; alt: string | null }[];
   collection: { name: string; slug: string } | null;
@@ -77,6 +78,7 @@ function staticProductToCatalog(p: StaticProduct): CatalogProduct {
     dimensions: p.dimensions,
     features: p.features,
     isFeatured: p.isFeatured,
+    model3dUrl: null,
     image: p.image,
     images: [{ url: p.image, alt: p.name }],
     collection: col ? { name: col.name, slug: col.slug } : null,
@@ -98,6 +100,7 @@ function dbProductToCatalog(p: {
   dimensions: string | null;
   features: string[];
   isFeatured: boolean;
+  model3dUrl: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   images: { url: string; alt: string | null }[];
@@ -116,6 +119,7 @@ function dbProductToCatalog(p: {
     dimensions: p.dimensions,
     features: p.features,
     isFeatured: p.isFeatured,
+    model3dUrl: p.model3dUrl,
     image: p.images[0]?.url ?? "/images/products/placeholder.svg",
     images: p.images.map((i) => ({ url: i.url, alt: i.alt })),
     collection: p.collection,

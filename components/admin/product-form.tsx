@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { ListInput } from "@/components/admin/list-input";
 import { SeoFields } from "@/components/admin/seo-fields";
 import { MediaUploader } from "@/components/admin/media-uploader";
+import { Model3DViewer } from "@/components/product/model-3d-viewer";
 import { slugify } from "@/lib/utils";
 import type { ProductInput } from "@/lib/validations";
 
@@ -37,6 +38,7 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
     dimensions: initial?.dimensions ?? "",
     features: initial?.features ?? [],
     images: initial?.images ?? [],
+    model3dUrl: initial?.model3dUrl ?? "",
     customizable: initial?.customizable ?? true,
     isFeatured: initial?.isFeatured ?? false,
     isPublished: initial?.isPublished ?? false,
@@ -260,6 +262,32 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
                 </li>
               ))}
             </ul>
+          )}
+        </fieldset>
+
+        <fieldset className="space-y-4 rounded-2xl border border-border p-6">
+          <legend className="px-2 text-sm font-semibold">Modèle 3D (GLB / GLTF)</legend>
+          <div className="space-y-2">
+            <Label htmlFor="model3d">URL du modèle 3D</Label>
+            <Input
+              id="model3d"
+              value={state.model3dUrl ?? ""}
+              onChange={(e) => set("model3dUrl", e.target.value)}
+              placeholder="https://…/monture.glb"
+            />
+          </div>
+          <MediaUploader onUploaded={(url) => set("model3dUrl", url)} />
+          {state.model3dUrl ? (
+            <Model3DViewer
+              src={state.model3dUrl}
+              alt="Aperçu 3D"
+              className="aspect-video w-full overflow-hidden rounded-xl border border-border"
+            />
+          ) : (
+            <p className="text-xs text-muted">
+              Téléversez un fichier .glb/.gltf ou collez une URL. Affiché et
+              manipulable (rotation, zoom, AR) sur la fiche produit.
+            </p>
           )}
         </fieldset>
 

@@ -23,6 +23,7 @@ export async function POST(req: Request) {
         shortDescription: data.shortDescription || null,
         description: data.description || null,
         dimensions: data.dimensions || null,
+        model3dUrl: data.model3dUrl || null,
         seoTitle: data.seoTitle || null,
         seoDescription: data.seoDescription || null,
         collectionId: collectionId || null,

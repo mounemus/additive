@@ -124,6 +124,7 @@ export const productSchema = z.object({
   images: z
     .array(z.object({ url: z.string().min(1), alt: z.string().max(200).optional().or(z.literal("")) }))
     .default([]),
+  model3dUrl: z.string().max(1000).optional().or(z.literal("")),
   customizable: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(false),
@@ -156,6 +157,16 @@ export const mediaSchema = z.object({
   url: z.string().min(1, "URL requise").max(1000),
   alt: z.string().max(200).optional().or(z.literal("")),
   kind: z.enum(["image", "video", "render3d", "texture", "moodboard", "autre"]).default("image"),
+});
+
+// ── MODUL'AIR « Moduler mes lunettes » ──────────────────────────────────────
+export const modulairSelectionSchema = z.object({
+  faceShape: z.string().max(40),
+  faceColor: z.string().max(40),
+  branchStyle: z.string().max(40),
+  branchColor: z.string().max(40),
+  verre: z.string().max(40),
+  finish: z.string().max(40),
 });
 
 export const requestStatusSchema = z.object({

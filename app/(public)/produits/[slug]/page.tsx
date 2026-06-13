@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetails } from "@/components/product/product-details";
+import { Model3DViewer } from "@/components/product/model-3d-viewer";
 import { ProductGrid } from "@/components/product/product-grid";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -72,6 +73,23 @@ export default async function ProductPage({
           </FadeIn>
         </div>
       </section>
+
+      {product.model3dUrl && (
+        <section className="border-t border-border py-16">
+          <div className="container">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="font-display text-display-md font-bold">Vue 3D</h2>
+              <p className="text-sm text-muted">Faites pivoter, zoomez, explorez la monture sous tous les angles.</p>
+            </div>
+            <Model3DViewer
+              src={product.model3dUrl}
+              alt={`${product.name} — modèle 3D`}
+              poster={product.image}
+              className="aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border"
+            />
+          </div>
+        </section>
+      )}
 
       {product.description && (
         <section className="border-t border-border py-20">

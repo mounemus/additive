@@ -55,6 +55,7 @@ export default async function EditProductPage({
           dimensions: product.dimensions ?? "",
           features: product.features,
           images: product.images.map((i) => ({ url: i.url, alt: i.alt ?? "" })),
+          model3dUrl: product.model3dUrl ?? "",
           customizable: product.customizable,
           isFeatured: product.isFeatured,
           isPublished: product.isPublished,

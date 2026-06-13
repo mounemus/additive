@@ -114,6 +114,31 @@ export default async function CollectionPage({
         </section>
       )}
 
+      {collection.slug === "modulair" && (
+        <section className="pb-20">
+          <div className="container">
+            <FadeIn>
+              <div className="section-dark flex flex-col items-start gap-5 rounded-3xl border border-border p-8 md:flex-row md:items-center md:justify-between md:p-12">
+                <div>
+                  <p className="eyebrow mb-2">Système modulaire</p>
+                  <h2 className="font-display text-display-md font-bold">Moduler mes lunettes</h2>
+                  <p className="mt-3 max-w-xl text-muted">
+                    Composez votre monture pièce par pièce — face, branches,
+                    couleurs, verres, finition — avec aperçu en direct, essayage
+                    AR et portrait porté.
+                  </p>
+                </div>
+                <Link href="/personnalisation/modulair">
+                  <Button variant="light" size="lg" className="gap-2">
+                    <Sparkles className="h-4 w-4" /> Ouvrir le configurateur
+                  </Button>
+                </Link>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+      )}
+
       <section className="pb-24">
         <div className="container">
           <div className="mb-10 flex items-end justify-between">

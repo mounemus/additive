@@ -24,6 +24,7 @@ model Product {
   materials        String[]
   dimensions       String?
   features         String[]
+  model3dUrl       String?        // modèle 3D GLB/GLTF (visualisable et manipulable)
   customizable     Boolean        @default(true)
   isFeatured       Boolean        @default(false)
   isPublished      Boolean        @default(false)
