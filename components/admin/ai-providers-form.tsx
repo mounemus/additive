@@ -161,13 +161,23 @@ export function AiProvidersForm({ initial }: { initial: Status }) {
                     <option key={pid} value={pid}>{PROVIDER_LABELS[pid] ?? pid}</option>
                   ))}
                 </Select>
-                <Select value={a.model} onChange={(e) => setTask(task.id, { model: e.target.value })} disabled={a.provider === "demo" || models.length === 0} className="h-9 text-sm" aria-label={`Modèle ${task.label}`}>
-                  {models.length === 0 ? (
-                    <option value="">—</option>
-                  ) : (
-                    models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)
-                  )}
-                </Select>
+                <div>
+                  {/* Champ libre : suggestions + saisie de tout identifiant de modèle. */}
+                  <Input
+                    list={`models-${task.id}`}
+                    value={a.model}
+                    onChange={(e) => setTask(task.id, { model: e.target.value })}
+                    disabled={a.provider === "demo"}
+                    placeholder="identifiant du modèle…"
+                    className="h-9 text-sm"
+                    aria-label={`Modèle ${task.label}`}
+                  />
+                  <datalist id={`models-${task.id}`}>
+                    {models.map((m) => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </datalist>
+                </div>
               </div>
             );
           })}

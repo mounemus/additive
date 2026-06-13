@@ -84,14 +84,19 @@ export const PROVIDER_CATALOG: {
   { id: "openai-vision", label: "OpenAI Vision", slot: "vision", models: ["gpt-4o-mini"], keyEnv: "OPENAI_API_KEY" },
 ];
 
-// Modèles à jour par fournisseur (alimentent les menus déroulants admin).
+// Suggestions de modèles par fournisseur (le champ reste libre : on peut
+// saisir n'importe quel identifiant, y compris un modèle plus récent).
 export const MODEL_CATALOG: Record<string, { id: string; label: string }[]> = {
   openai: [
     { id: "gpt-image-1", label: "GPT Image 1 (édition + transparence)" },
+    { id: "gpt-image-1-mini", label: "GPT Image 1 Mini (rapide / économique)" },
+    { id: "chatgpt-image-latest", label: "ChatGPT Image — dernière version" },
     { id: "dall-e-3", label: "DALL·E 3" },
   ],
   gemini: [
+    { id: "gemini-3-pro-image-preview", label: "Gemini 3 Pro Image — « Nano Banana Pro »" },
     { id: "gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image — « Nano Banana »" },
+    { id: "gemini-2.5-flash-image-preview", label: "Gemini 2.5 Flash Image (preview)" },
     { id: "gemini-2.0-flash-preview-image-generation", label: "Gemini 2.0 Flash Image" },
   ],
   stability: [
@@ -103,6 +108,8 @@ export const MODEL_CATALOG: Record<string, { id: string; label: string }[]> = {
     { id: "black-forest-labs/flux-1.1-pro-ultra", label: "FLUX 1.1 Pro Ultra" },
     { id: "black-forest-labs/flux-1.1-pro", label: "FLUX 1.1 Pro" },
     { id: "black-forest-labs/flux-dev", label: "FLUX Dev" },
+    { id: "google/nano-banana", label: "Nano Banana (via Replicate)" },
+    { id: "recraft-ai/recraft-v3", label: "Recraft V3" },
   ],
 };
 
