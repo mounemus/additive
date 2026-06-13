@@ -96,7 +96,12 @@ async function gemini(req: ImageGenRequest, key: string, model: string): Promise
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts }] }),
+      // responseModalities IMAGE est requis par les modèles de génération
+      // d'images Gemini (Nano Banana) pour renvoyer une image inline.
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+      }),
     }
   );
   if (!res.ok) {
