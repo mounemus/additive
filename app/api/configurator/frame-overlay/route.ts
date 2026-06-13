@@ -1,24 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  buildWornPortraitPromptFr,
+  buildFrameOverlayPromptFr,
   buildConcepts,
   conceptByLabel,
   type StyleTag,
 } from "@/lib/configurator";
-import { generateWornPortrait } from "@/lib/ai/image-provider";
+import { generateFrameOverlay } from "@/lib/ai/image-provider";
 
 const schema = z.object({
   conceptLabel: z.string().max(120),
   styleTags: z.array(z.string().max(40)).max(8).default([]),
-  photo: z.string().max(8_000_000), // data URL de la photo du client
-  conceptImage: z.string().max(8_000_000).optional(), // rendu studio du concept
 });
 
 /**
- * Portrait porté : la personne portant EXACTEMENT la monture choisie, identité
- * STRICTEMENT préservée. Route le rendu via Gemini (photo + image du concept)
- * ou OpenAI /images/edits — jamais /images/generations. Sans IA, `unavailable`.
+ * Façade transparente du concept pour l'essayage AR (superposée et ancrée aux
+ * landmarks côté client). Renvoie l'image + le fond ('transparent' alpha natif
+ * OpenAI, ou 'white' à détourer côté client pour Gemini). Sans IA → 503.
  */
 export async function POST(req: Request) {
   let body: unknown;
@@ -38,16 +36,9 @@ export async function POST(req: Request) {
     (tpl ? { ...tpl, id: "x", matchRate: 80 } : null);
   if (!concept) return NextResponse.json({ error: "unknown_concept" }, { status: 422 });
 
-  const prompt = buildWornPortraitPromptFr(concept, styleTags, Boolean(parsed.data.conceptImage));
-  const result = await generateWornPortrait({
-    prompt,
-    photo: parsed.data.photo,
-    conceptImage: parsed.data.conceptImage,
-  });
+  const prompt = buildFrameOverlayPromptFr(concept, styleTags);
+  const result = await generateFrameOverlay({ prompt });
+  if (!result.ok) return NextResponse.json({ error: "unavailable" }, { status: 503 });
 
-  if (!result.ok) {
-    // Message générique — aucun détail de fournisseur exposé.
-    return NextResponse.json({ error: "unavailable" }, { status: 503 });
-  }
-  return NextResponse.json({ image: result.dataUrl });
+  return NextResponse.json({ image: result.dataUrl, bg: result.bg });
 }

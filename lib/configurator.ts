@@ -435,15 +435,41 @@ export function buildConceptPromptFr(
  * Prompt FR pour le PORTRAIT PORTÉ : la personne portant exactement la
  * monture choisie, identité STRICTEMENT préservée.
  */
-export function buildWornPortraitPromptFr(concept: Concept, styleTags: StyleTag[]): string {
+export function buildWornPortraitPromptFr(
+  concept: Concept,
+  styleTags: StyleTag[],
+  hasConceptImage = false
+): string {
   const pal = profilePalette(styleTags);
   return [
-    "Portrait photoréaliste de la personne de la photo fournie, identité, traits,",
-    "carnation, coiffure et expression STRICTEMENT préservés et inchangés.",
-    `Ajouter UNIQUEMENT la monture de lunettes « ${concept.label} » : ${concept.summary}`,
-    `Matière ${pal.material}, teinte cohérente (${pal.colors.join(", ")}),`,
-    "positionnée naturellement sur le nez et les oreilles, perspective correcte,",
-    "lumière et grain raccordés à la photo d'origine. Aucun autre changement.",
+    "À partir de la PREMIÈRE image (photo de la personne) : garde STRICTEMENT",
+    "identiques son visage, son identité, ses traits, sa carnation, sa coiffure,",
+    "sa barbe, son expression et l'arrière-plan. Ne change RIEN du visage.",
+    hasConceptImage
+      ? "La DEUXIÈME image montre la monture exacte à lui faire porter : reproduis-en fidèlement la forme, l'épaisseur et la couleur."
+      : `Ajoute la monture « ${concept.label} » : ${concept.summary}`,
+    `Matière ${pal.material}, teinte cohérente (${pal.colors.join(", ")}).`,
+    "Place la monture naturellement sur le nez et les oreilles, perspective et",
+    "échelle correctes, lumière et grain raccordés à la photo d'origine.",
+    "Résultat photoréaliste, la même personne portant ces lunettes.",
+  ].join(" ");
+}
+
+/**
+ * Prompt façade transparente pour l'essayage AR : la FACE seule de la monture,
+ * branches coupées aux charnières, cadrage bord à bord (l'overlay est ensuite
+ * rogné sur l'alpha et ancré aux landmarks).
+ */
+export function buildFrameOverlayPromptFr(concept: Concept, styleTags: StyleTag[]): string {
+  const pal = profilePalette(styleTags);
+  return [
+    "Vue strictement de face de la SEULE façade d'une monture de lunettes",
+    `imprimée en 3D « ${concept.label} » (branches coupées net aux charnières,`,
+    "ne montrer que la face avant avec les deux cercles et le pont).",
+    concept.summary,
+    `Matière ${pal.material}, couleur ${pal.colors[1] ?? pal.colors[0]}.`,
+    "Cadrage bord à bord, monture centrée et horizontale, occupant toute la largeur,",
+    "verres transparents (pas de reflet opaque), aucune ombre portée, aucun visage.",
   ].join(" ");
 }
 

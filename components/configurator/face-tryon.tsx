@@ -7,16 +7,20 @@ import { getFaceLandmarker } from "@/lib/face/mediapipe";
 import { demoFrameOverlaySvg } from "@/lib/ai/demo-visuals";
 
 /**
- * Essayage par superposition : la monture (PNG/SVG de façade transparent) est
- * ancrée en temps réel aux tempes et à la ligne des yeux via les landmarks
- * MediaPipe. « Capturer mon essayage » enregistre une photo souvenir.
- * Tout reste local au navigateur.
+ * Essayage AR « Essayer sur mon visage » : la façade transparente du concept
+ * (vrai PNG IA, détouré + rogné sur l'alpha) est ancrée en temps réel aux
+ * tempes (234/454) et à la ligne des yeux (33/263), vue miroir selfie.
+ * « Capturer mon essayage » enregistre une photo souvenir. 100 % local.
  */
 export function FaceTryon({
   paletteColors,
+  frameSrc,
+  frameBg,
   onCapture,
 }: {
   paletteColors: string[];
+  frameSrc?: string | null;
+  frameBg?: "transparent" | "white";
   onCapture: (dataUrl: string) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,10 +29,11 @@ export function FaceTryon({
   const rafRef = useRef<number>(0);
   const runningRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const lmRef = useRef<any>(null);
   const noFaceRef = useRef(0);
   const cpuTriedRef = useRef(false);
   const switchingRef = useRef(false);
+  const lmRef = useRef<any>(null);
+  const smoothRef = useRef<{ cx: number; cy: number; w: number; a: number } | null>(null);
 
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
 
@@ -41,12 +46,17 @@ export function FaceTryon({
 
   useEffect(() => cleanup, [cleanup]);
 
-  // Prépare l'image de façade transparente (couleur = palette du concept).
+  // Prépare la façade : détourage du blanc (Gemini) + rognage sur l'alpha.
   useEffect(() => {
-    const img = new window.Image();
-    img.src = demoFrameOverlaySvg(paletteColors);
-    img.onload = () => (frameImgRef.current = img);
-  }, [paletteColors]);
+    let cancelled = false;
+    const src = frameSrc || demoFrameOverlaySvg(paletteColors);
+    prepareFrame(src, frameSrc ? frameBg : "transparent").then((img) => {
+      if (!cancelled && img) frameImgRef.current = img;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [frameSrc, frameBg, paletteColors]);
 
   const loop = useCallback(() => {
     const video = videoRef.current;
@@ -54,13 +64,18 @@ export function FaceTryon({
     const lm = lmRef.current;
     if (!runningRef.current || !video || !canvas || !lm) return;
 
-    if (video.readyState >= 2) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+    if (video.readyState >= 2 && video.videoWidth) {
+      const W = (canvas.width = video.videoWidth);
+      const H = (canvas.height = video.videoHeight);
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        let result;
+        // Vidéo en miroir (selfie).
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, -W, 0, W, H);
+        ctx.restore();
+
+        let result: any = null;
         try {
           result = lm.detectForVideo(video, performance.now());
         } catch {
@@ -81,30 +96,33 @@ export function FaceTryon({
               .catch(() => {})
               .finally(() => (switchingRef.current = false));
           }
-        } else if (landmarks && frame) {
+        } else if (frame) {
           noFaceRef.current = 0;
-          const W = canvas.width;
-          const H = canvas.height;
-          // Tempes gauche (127) et droite (356) → largeur + angle de la monture.
-          const tL = landmarks[127];
-          const tR = landmarks[356];
-          const eyeL = landmarks[33];
-          const eyeR = landmarks[263];
-          const x1 = tL.x * W;
-          const y1 = tL.y * H;
-          const x2 = tR.x * W;
-          const y2 = tR.y * H;
-          const cx = (x1 + x2) / 2;
-          const cy = ((eyeL.y + eyeR.y) / 2) * H;
-          const width = Math.hypot(x2 - x1, y2 - y1) * 1.06;
-          const angle = Math.atan2(y2 - y1, x2 - x1);
-          const ratio = frame.naturalHeight / frame.naturalWidth;
-          const height = width * ratio;
+          // Coordonnées miroir (x → W - x).
+          const p = (i: number) => ({ x: W - landmarks[i].x * W, y: landmarks[i].y * H });
+          const tL = p(234);
+          const tR = p(454);
+          const eL = p(33);
+          const eR = p(263);
+          const targetW = Math.hypot(tR.x - tL.x, tR.y - tL.y) * 1.02;
+          const cx = (tL.x + tR.x) / 2;
+          const cy = (eL.y + eR.y) / 2;
+          const a = Math.atan2(tR.y - tL.y, tR.x - tL.x);
 
+          // Lissage exponentiel (0.4).
+          const s = smoothRef.current;
+          const k = 0.4;
+          const sm = s
+            ? { cx: s.cx + (cx - s.cx) * k, cy: s.cy + (cy - s.cy) * k, w: s.w + (targetW - s.w) * k, a: s.a + (a - s.a) * k }
+            : { cx, cy, w: targetW, a };
+          smoothRef.current = sm;
+
+          const ratio = frame.naturalHeight / frame.naturalWidth;
+          const h = sm.w * ratio;
           ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(angle);
-          ctx.drawImage(frame, -width / 2, -height / 2, width, height);
+          ctx.translate(sm.cx, sm.cy);
+          ctx.rotate(sm.a);
+          ctx.drawImage(frame, -sm.w / 2, -h / 2, sm.w, h);
           ctx.restore();
         }
       }
@@ -117,6 +135,7 @@ export function FaceTryon({
     try {
       noFaceRef.current = 0;
       cpuTriedRef.current = false;
+      smoothRef.current = null;
       const { landmarker } = await getFaceLandmarker("GPU");
       lmRef.current = landmarker;
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -151,7 +170,7 @@ export function FaceTryon({
         {status === "idle" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/60">
             <Camera className="h-12 w-12" />
-            <p className="text-sm">Essayage sur votre visage</p>
+            <p className="text-sm">Essayer sur mon visage</p>
           </div>
         )}
         {status === "loading" && (
@@ -168,7 +187,7 @@ export function FaceTryon({
       <div className="mt-5 flex flex-wrap justify-center gap-3">
         {status !== "live" ? (
           <Button onClick={start} className="gap-2">
-            <Camera className="h-4 w-4" /> Lancer l'essayage
+            <Camera className="h-4 w-4" /> Essayer sur mon visage
           </Button>
         ) : (
           <Button onClick={capture} variant="accent" className="gap-2">
@@ -178,4 +197,74 @@ export function FaceTryon({
       </div>
     </div>
   );
+}
+
+// ── Préparation de la façade : détourage blanc + rognage alpha ───────────────
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function prepareFrame(
+  src: string,
+  bg: "transparent" | "white" | undefined
+): Promise<HTMLImageElement | null> {
+  try {
+    const img = await loadImage(src);
+    const w = img.naturalWidth || 1024;
+    const h = img.naturalHeight || 1024;
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d");
+    if (!ctx) return img;
+    ctx.drawImage(img, 0, 0);
+    let data: ImageData;
+    try {
+      data = ctx.getImageData(0, 0, w, h);
+    } catch {
+      return img; // canvas teinté (CORS) → image brute
+    }
+    const px = data.data;
+    if (bg === "white") {
+      // Détourage du fond blanc (seuil min-canal > 205, faible saturation).
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i], g = px[i + 1], b = px[i + 2];
+        const min = Math.min(r, g, b);
+        const max = Math.max(r, g, b);
+        if (min > 205 && max - min < 26) px[i + 3] = 0;
+      }
+    }
+    // Bornes alpha pour le rognage.
+    let minX = w, minY = h, maxX = 0, maxY = 0, found = false;
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        if (px[(y * w + x) * 4 + 3] > 16) {
+          found = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (bg === "white") ctx.putImageData(data, 0, 0);
+    if (!found) return img;
+    const bw = maxX - minX + 1;
+    const bh = maxY - minY + 1;
+    const tc = document.createElement("canvas");
+    tc.width = bw;
+    tc.height = bh;
+    const tctx = tc.getContext("2d");
+    if (!tctx) return img;
+    tctx.drawImage(c, minX, minY, bw, bh, 0, 0, bw, bh);
+    return await loadImage(tc.toDataURL("image/png"));
+  } catch {
+    return null;
+  }
 }

@@ -125,6 +125,8 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   const [portraitLoading, setPortraitLoading] = useState(false);
   const [portraitError, setPortraitError] = useState<string | null>(null);
   const [tryonMode, setTryonMode] = useState<"studio" | "live">("studio");
+  const [overlay, setOverlay] = useState<{ image: string; bg: "transparent" | "white" } | null>(null);
+  const overlayForRef = useRef<string | null>(null);
 
   // Devis
   const [opts, setOpts] = useState({
@@ -239,6 +241,22 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     };
   }, [step, selected, boldness, opts]);
 
+  // ── Façade pour l'essayage AR (générée pour le concept choisi) ────────────
+  useEffect(() => {
+    if (step !== "tryon" || !selected) return;
+    if (overlayForRef.current === selected.id) return;
+    overlayForRef.current = selected.id;
+    setOverlay(null);
+    fetch("/api/configurator/frame-overlay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conceptLabel: selected.label, styleTags: profile }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setOverlay({ image: data.image, bg: data.bg }))
+      .catch(() => setOverlay(null)); // repli : FaceTryon utilise la façade SVG
+  }, [step, selected, profile]);
+
   // ── Suppression des photos (confidentialité) ──────────────────────────────
   function deletePhotos() {
     setScan((s) => (s ? { ...s, photoDataUrl: null } : s));
@@ -255,7 +273,12 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     fetch("/api/configurator/tryon-portrait", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conceptLabel: selected.label, styleTags: profile, photo }),
+      body: JSON.stringify({
+        conceptLabel: selected.label,
+        styleTags: profile,
+        photo,
+        conceptImage: selected.image,
+      }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((data) => setPortrait(data.image))
@@ -637,7 +660,12 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                       <Image src={selected.image} alt={selected.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
                     </button>
                   ) : (
-                    <FaceTryon paletteColors={palette.colors} onCapture={(d) => setSnapshot(d)} />
+                    <FaceTryon
+                      paletteColors={palette.colors}
+                      frameSrc={overlay?.image}
+                      frameBg={overlay?.bg}
+                      onCapture={(d) => setSnapshot(d)}
+                    />
                   )}
                 </div>
 
