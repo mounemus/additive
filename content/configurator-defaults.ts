@@ -94,10 +94,11 @@ export const MODEL_CATALOG: Record<string, { id: string; label: string }[]> = {
     { id: "dall-e-3", label: "DALL·E 3" },
   ],
   gemini: [
-    { id: "gemini-3-pro-image-preview", label: "Gemini 3 Pro Image — « Nano Banana Pro »" },
+    { id: "gemini-3-pro-image", label: "Gemini 3 Pro Image — « Nano Banana Pro » (qualité max, édition fidèle)" },
+    { id: "gemini-3.1-flash-image", label: "Gemini 3.1 Flash Image — « Nano Banana 2 » (rapide)" },
+    { id: "gemini-3-pro-image-preview", label: "Gemini 3 Pro Image (preview)" },
     { id: "gemini-2.5-flash-image", label: "Gemini 2.5 Flash Image — « Nano Banana »" },
-    { id: "gemini-2.5-flash-image-preview", label: "Gemini 2.5 Flash Image (preview)" },
-    { id: "gemini-2.0-flash-preview-image-generation", label: "Gemini 2.0 Flash Image" },
+    { id: "imagen-4.0-ultra-generate-001", label: "Imagen 4 Ultra (texte→image, sans édition)" },
   ],
   stability: [
     { id: "stable-image-ultra", label: "Stable Image Ultra" },

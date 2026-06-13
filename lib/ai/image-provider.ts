@@ -167,7 +167,7 @@ export async function generateWornPortrait(opts: {
         opts.prompt,
         refs,
         key,
-        provider === "gemini" ? model : "gemini-2.5-flash-image"
+        provider === "gemini" ? model : "gemini-3-pro-image"
       );
       if (r.ok) return r;
     } else {
@@ -225,7 +225,7 @@ export async function generateFrameOverlay(opts: {
   prompt: string;
   conceptImage?: string;
 }): Promise<{ ok: true; dataUrl: string; bg: "transparent" | "white" } | { ok: false }> {
-  const { provider } = await getTaskConfig("frameOverlay");
+  const { provider, model } = await getTaskConfig("frameOverlay");
   // Avec l'image du concept, Gemini la reproduit fidèlement (OpenAI
   // /generations ne prend pas d'image en entrée) → Gemini en tête.
   const order = opts.conceptImage
@@ -239,7 +239,7 @@ export async function generateFrameOverlay(opts: {
       const r = await overlayOpenAI(opts.prompt);
       if (r) return r;
     } else {
-      const r = await overlayGemini(opts.prompt, opts.conceptImage);
+      const r = await overlayGemini(opts.prompt, opts.conceptImage, model);
       if (r) return r;
     }
   }
@@ -278,16 +278,18 @@ async function overlayOpenAI(
 
 async function overlayGemini(
   prompt: string,
-  conceptImage?: string
+  conceptImage?: string,
+  model?: string
 ): Promise<{ ok: true; dataUrl: string; bg: "white" } | null> {
   const key = await getProviderKey("gemini");
   if (!key) return null;
+  const m = model && model.startsWith("gemini") ? model : "gemini-3-pro-image";
   const refs = conceptImage && conceptImage.startsWith("data:") ? [conceptImage] : [];
   // Avec l'image du concept : reproduire EXACTEMENT la monture (fidélité AR).
   const fullPrompt = conceptImage
     ? `${prompt} Reproduis EXACTEMENT la monture montrée dans l'image de référence — même forme, même épaisseur, même couleur, même matière. Vue strictement de face, façade seule (branches coupées aux charnières), cadrage bord à bord. Fond blanc pur uni #FFFFFF, sans ombre portée.`
     : `${prompt} Fond blanc pur uni #FFFFFF, sans ombre, sans décor.`;
-  const r = await geminiGenerate(fullPrompt, refs, key, "gemini-2.5-flash-image");
+  const r = await geminiGenerate(fullPrompt, refs, key, m);
   if (r.ok) return { ok: true, dataUrl: r.dataUrl, bg: "white" };
   return null;
 }
