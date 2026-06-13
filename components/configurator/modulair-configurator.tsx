@@ -15,14 +15,13 @@ import { FaceScanner, type ScanResult } from "@/components/configurator/face-sca
 import { cn, formatPrice } from "@/lib/utils";
 import {
   FACE_SHAPES_MOD,
-  MOD_COLORS,
-  BRANCH_STYLES,
-  VERRES,
-  FINISHES_MOD,
+  MODULAIR_DEFAULT_CONFIG,
   DEFAULT_SELECTION,
   selectionSummaryFr,
   colorOf,
   type ModulairSelection,
+  type ModulairConfig,
+  type ModColor,
 } from "@/lib/modulair";
 
 type Quote = {
@@ -39,6 +38,7 @@ const LABEL = "MODUL’AIR sur-mesure";
 
 export function ModulairConfigurator() {
   const [sel, setSel] = useState<ModulairSelection>(DEFAULT_SELECTION);
+  const [cfg, setCfg] = useState<ModulairConfig>(MODULAIR_DEFAULT_CONFIG);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [tab, setTab] = useState<"preview" | "render" | "ar">("preview");
 
@@ -58,6 +58,14 @@ export function ModulairConfigurator() {
 
   const summary = useMemo(() => selectionSummaryFr(sel), [sel]);
   const selKey = JSON.stringify(sel);
+
+  // Config administrable (libellés + prix des éléments de combinaison).
+  useEffect(() => {
+    fetch("/api/configurator/modulair-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setCfg(d))
+      .catch(() => {});
+  }, []);
 
   function set<K extends keyof ModulairSelection>(k: K, v: ModulairSelection[K]) {
     setSel((s) => ({ ...s, [k]: v }));
@@ -231,12 +239,12 @@ export function ModulairConfigurator() {
 
         {/* ── Configuration ─────────────────────────────────────────────── */}
         <div className="space-y-6">
-          <Selector label="Forme de la face" options={FACE_SHAPES_MOD} value={sel.faceShape} onChange={(v) => set("faceShape", v)} />
-          <Swatches label="Couleur de la face" value={sel.faceColor} onChange={(v) => set("faceColor", v)} />
-          <Selector label="Branches" options={BRANCH_STYLES} value={sel.branchStyle} onChange={(v) => set("branchStyle", v)} />
-          <Swatches label="Couleur des branches" value={sel.branchColor} onChange={(v) => set("branchColor", v)} />
-          <Selector label="Verres" options={VERRES} value={sel.verre} onChange={(v) => set("verre", v)} />
-          <Selector label="Finition" options={FINISHES_MOD} value={sel.finish} onChange={(v) => set("finish", v)} />
+          <Selector label="Forme de la face" options={FACE_SHAPES_MOD} value={sel.faceShape} onChange={(v) => set("faceShape", v as ModulairSelection["faceShape"])} />
+          <Swatches label="Couleur de la face" colors={cfg.colors} value={sel.faceColor} onChange={(v) => set("faceColor", v)} />
+          <Selector label="Branches" options={cfg.branchStyles} value={sel.branchStyle} onChange={(v) => set("branchStyle", v as ModulairSelection["branchStyle"])} />
+          <Swatches label="Couleur des branches" colors={cfg.colors} value={sel.branchColor} onChange={(v) => set("branchColor", v)} />
+          <Selector label="Verres" options={cfg.verres} value={sel.verre} onChange={(v) => set("verre", v as ModulairSelection["verre"])} />
+          <Selector label="Finition" options={cfg.finishes} value={sel.finish} onChange={(v) => set("finish", v as ModulairSelection["finish"])} />
 
           {quote && (
             <div className="rounded-2xl border border-border bg-background p-5">
@@ -333,16 +341,16 @@ export function ModulairConfigurator() {
   );
 }
 
-function Selector<T extends string>({
+function Selector({
   label,
   options,
   value,
   onChange,
 }: {
   label: string;
-  options: readonly { id: T; label: string; hint?: string }[];
-  value: T;
-  onChange: (v: T) => void;
+  options: readonly { id: string; label: string; hint?: string }[];
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
     <fieldset>
@@ -367,12 +375,12 @@ function Selector<T extends string>({
   );
 }
 
-function Swatches({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Swatches({ label, colors, value, onChange }: { label: string; colors: ModColor[]; value: string; onChange: (v: string) => void }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-sm font-medium">{label} — {colorOf(value).label}</legend>
+      <legend className="mb-2 text-sm font-medium">{label} — {colorOf(value, colors).label}</legend>
       <div className="flex gap-2.5">
-        {MOD_COLORS.map((c) => (
+        {colors.map((c) => (
           <button
             key={c.id}
             onClick={() => onChange(c.id)}

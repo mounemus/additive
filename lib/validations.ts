@@ -169,6 +169,23 @@ export const modulairSelectionSchema = z.object({
   finish: z.string().max(40),
 });
 
+const modOptionSchema = z.object({
+  id: z.string().max(40),
+  label: z.string().max(80),
+  hint: z.string().max(160).default(""),
+  price: z.number().min(0),
+});
+
+export const modulairConfigSchema = z.object({
+  base: z.number().min(0),
+  bicolor: z.number().min(0),
+  currency: z.string().max(8),
+  colors: z.array(z.object({ id: z.string().max(40), label: z.string().max(40), hex: z.string().max(16) })),
+  branchStyles: z.array(modOptionSchema),
+  verres: z.array(modOptionSchema),
+  finishes: z.array(modOptionSchema),
+});
+
 export const requestStatusSchema = z.object({
   status: z.enum(["new", "in_progress", "answered", "archived"]),
   note: z.string().max(2000).optional().or(z.literal("")),

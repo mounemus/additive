@@ -84,16 +84,42 @@ export const DEFAULT_SELECTION: ModulairSelection = {
 
 const MOD_BASE = 220; // structure de base imprimée
 
-function price<T extends { id: string; price: number }>(list: readonly T[], id: string): number {
+// ── Configuration administrable des éléments de combinaison ─────────────────
+export type ModOption = { id: string; label: string; hint: string; price: number };
+
+export type ModulairConfig = {
+  base: number;
+  bicolor: number; // surcoût assemblage bicolore
+  currency: string;
+  colors: ModColor[];
+  branchStyles: ModOption[];
+  verres: ModOption[];
+  finishes: ModOption[];
+};
+
+export const MODULAIR_DEFAULT_CONFIG: ModulairConfig = {
+  base: MOD_BASE,
+  bicolor: 15,
+  currency: "CAD",
+  colors: MOD_COLORS,
+  branchStyles: BRANCH_STYLES.map((b) => ({ id: b.id, label: b.label, hint: b.hint, price: b.price })),
+  verres: VERRES.map((v) => ({ id: v.id, label: v.label, hint: v.hint, price: v.price })),
+  finishes: FINISHES_MOD.map((f) => ({ id: f.id, label: f.label, hint: f.hint, price: f.price })),
+};
+
+function price(list: { id: string; price: number }[], id: string): number {
   return list.find((x) => x.id === id)?.price ?? 0;
 }
 
-export function colorOf(id: string): ModColor {
-  return MOD_COLORS.find((c) => c.id === id) ?? MOD_COLORS[0];
+export function colorOf(id: string, colors: ModColor[] = MOD_COLORS): ModColor {
+  return colors.find((c) => c.id === id) ?? MOD_COLORS[0];
 }
 
-/** Prix indicatif (le serveur reste l'autorité via /api/configurator/modulair-quote). */
-export function computeModulairPrice(sel: ModulairSelection): {
+/** Prix calculé à partir de la config admin (le serveur reste l'autorité). */
+export function computeModulairPrice(
+  sel: ModulairSelection,
+  cfg: ModulairConfig = MODULAIR_DEFAULT_CONFIG
+): {
   base: number;
   branches: number;
   verres: number;
@@ -102,12 +128,12 @@ export function computeModulairPrice(sel: ModulairSelection): {
   total: number;
   currency: string;
 } {
-  const branches = price(BRANCH_STYLES, sel.branchStyle);
-  const verres = price(VERRES, sel.verre);
-  const finish = price(FINISHES_MOD, sel.finish);
-  const bicolor = sel.faceColor !== sel.branchColor ? 15 : 0; // surcoût assemblage bicolore
-  const total = MOD_BASE + branches + verres + finish + bicolor;
-  return { base: MOD_BASE, branches, verres, finish, bicolor, total, currency: "CAD" };
+  const branches = price(cfg.branchStyles, sel.branchStyle);
+  const verres = price(cfg.verres, sel.verre);
+  const finish = price(cfg.finishes, sel.finish);
+  const bicolor = sel.faceColor !== sel.branchColor ? cfg.bicolor : 0;
+  const total = cfg.base + branches + verres + finish + bicolor;
+  return { base: cfg.base, branches, verres, finish, bicolor, total, currency: cfg.currency };
 }
 
 export function selectionSummaryFr(sel: ModulairSelection): string {

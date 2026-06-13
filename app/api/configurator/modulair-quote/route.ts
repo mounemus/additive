@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { modulairSelectionSchema } from "@/lib/validations";
 import { computeModulairPrice, type ModulairSelection } from "@/lib/modulair";
+import { getModulairConfig } from "@/lib/modulair-settings";
 
-/** Devis MODUL'AIR — calculé côté serveur (le client n'affiche jamais son propre prix). */
+/** Devis MODUL'AIR — calculé côté serveur depuis la config admin. */
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -12,5 +13,6 @@ export async function POST(req: Request) {
   }
   const parsed = modulairSelectionSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "validation" }, { status: 422 });
-  return NextResponse.json(computeModulairPrice(parsed.data as ModulairSelection));
+  const cfg = await getModulairConfig();
+  return NextResponse.json(computeModulairPrice(parsed.data as ModulairSelection, cfg));
 }
