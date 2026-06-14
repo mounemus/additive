@@ -40,4 +40,8 @@ yarn-error.log*
 *.wprime
 /Ultra_realistic_cinematic_prod.mp4
 
+# projet Remotion (rendu hors build Next/Vercel) — seul le MP4 rendu est versionné
+/remotion-hero/node_modules
+/remotion-hero/.remotion
+
 .vercel

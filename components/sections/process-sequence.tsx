@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { ScanFace, PenTool, Layers, Sparkles, Glasses } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { GenerativeBackground } from "@/components/motion/generative-bg";
@@ -15,9 +16,25 @@ const STEPS = [
 ];
 
 export function ProcessSequence() {
+  const reduce = useReducedMotion();
+  const [videoOk, setVideoOk] = useState(true);
+
   return (
     <section className="section-dark relative overflow-hidden py-24 md:py-32">
-      <GenerativeBackground className="absolute inset-0 h-full w-full opacity-60" color="77,140,255" density={54} />
+      {/* Vidéo Remotion « impression couche par couche » — repli lattice si absente/reduced-motion */}
+      {!reduce && videoOk && (
+        <video
+          className="absolute inset-0 h-full w-full object-cover opacity-50"
+          src="/videos/print-layers.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden="true"
+          onError={() => setVideoOk(false)}
+        />
+      )}
+      <GenerativeBackground className="absolute inset-0 h-full w-full opacity-40" color="77,140,255" density={54} />
       <div className="container relative">
         <FadeIn>
           <p className="eyebrow mb-4">Du visage à l’objet</p>
