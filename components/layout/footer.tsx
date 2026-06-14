@@ -19,8 +19,9 @@ const FOOTER_COLUMNS = [
     links: [
       { href: "/manifeste", label: "Manifeste" },
       { href: "/technologie", label: "Technologie" },
+      { href: "/process", label: "Le procédé" },
+      { href: "/journal", label: "Journal" },
       { href: "/about", label: "À propos" },
-      { href: "/contact", label: "Contact" },
     ],
   },
   {
@@ -28,8 +29,9 @@ const FOOTER_COLUMNS = [
     links: [
       { href: "/personnalisation", label: "Créer mes lunettes" },
       { href: "/personnalisation/modulair", label: "Moduler mes lunettes" },
-      { href: "/contact?type=partenariat", label: "Devenir détaillant" },
-      { href: "/contact?type=presse", label: "Presse" },
+      { href: "/retailers", label: "Devenir détaillant" },
+      { href: "/faq", label: "FAQ" },
+      { href: "/contact", label: "Contact" },
     ],
   },
 ];
