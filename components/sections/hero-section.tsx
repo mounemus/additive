@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import { HeroCanvas } from "@/components/motion/hero-canvas";
@@ -42,7 +43,20 @@ export function HeroSection({ content }: { content: HeroContent }) {
       ) : (
         <HeroCanvas className="absolute inset-0 h-full w-full" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-black/80" />
+      {/* Rendu IA de monture, ancré à droite (desktop) */}
+      <div className="absolute inset-y-0 right-0 hidden w-3/5 lg:block">
+        <Image
+          src="/images/editorial/hero-frame.png"
+          alt=""
+          fill
+          priority
+          aria-hidden
+          className="object-cover object-center opacity-80"
+          sizes="60vw"
+        />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/85" />
 
       <motion.div
         style={reduce ? undefined : { y: yTitle, opacity }}

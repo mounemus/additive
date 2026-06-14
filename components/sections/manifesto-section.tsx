@@ -45,8 +45,8 @@ export function ManifestoSection() {
 
           <Parallax amount={40}>
             <RevealImage
-              src="/images/collections/generative.svg"
-              alt="Structure paramétrique générative — ADDITIVE"
+              src="/images/editorial/macro-pa12.png"
+              alt="Macro de la surface nylon PA12 imprimée — ADDITIVE"
               className="aspect-[4/5] rounded-3xl"
             />
           </Parallax>

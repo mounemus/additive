@@ -4,6 +4,7 @@ import { ScanFace, PenTool, Layers, Sparkles, Glasses } from "lucide-react";
 import { motion } from "framer-motion";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
+import { GenerativeBackground } from "@/components/motion/generative-bg";
 
 const STEPS = [
   { id: "scan", label: "SCAN", icon: ScanFace, body: "Analyse morphologique du visage, calibrée au millimètre." },
@@ -15,8 +16,9 @@ const STEPS = [
 
 export function ProcessSequence() {
   return (
-    <section className="section-dark py-24 md:py-32">
-      <div className="container">
+    <section className="section-dark relative overflow-hidden py-24 md:py-32">
+      <GenerativeBackground className="absolute inset-0 h-full w-full opacity-60" color="77,140,255" density={54} />
+      <div className="container relative">
         <FadeIn>
           <p className="eyebrow mb-4">Du visage à l’objet</p>
         </FadeIn>
@@ -25,7 +27,7 @@ export function ProcessSequence() {
           className="max-w-3xl font-display text-display-lg font-bold"
         />
 
-        <div className="mt-16 grid gap-px overflow-hidden rounded-3xl border border-border bg-border md:grid-cols-5">
+        <div className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-border bg-border md:grid-cols-5">
           {STEPS.map((step, i) => (
             <motion.div
               key={step.id}

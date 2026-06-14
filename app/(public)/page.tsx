@@ -9,6 +9,7 @@ import { TechnologySection } from "@/components/sections/technology-section";
 import { ManifestoSection } from "@/components/sections/manifesto-section";
 import { ManifestoBand } from "@/components/sections/manifesto-band";
 import { ProcessSequence } from "@/components/sections/process-sequence";
+import { MatterBand } from "@/components/sections/matter-band";
 import { CTASection } from "@/components/sections/cta-section";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -116,7 +117,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 7. Expérience de marque (éditorial) */}
+      {/* 7. Section matière */}
+      <MatterBand />
+
+      {/* 8. Expérience de marque (éditorial) */}
       <ManifestoSection />
 
       {/* 8. CTA final */}

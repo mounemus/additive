@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
+import { RevealImage } from "@/components/motion/reveal-image";
 
 export const CUSTOMIZATION_STEPS = [
   { n: "01", title: "Choisir une base", body: "Partez d’une monture de la collection ou d’une feuille blanche." },
@@ -42,6 +43,14 @@ export function CustomizationSteps({ compact = false }: { compact?: boolean }) {
                   Créer ma monture <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <RevealImage
+                src="/images/editorial/exploded-modulair.png"
+                alt="Vue éclatée des composants modulaires — ADDITIVE"
+                className="mt-10 hidden aspect-[4/3] rounded-3xl lg:block"
+                sizes="40vw"
+              />
             </FadeIn>
           </div>
 
