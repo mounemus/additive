@@ -11,6 +11,7 @@ const FOOTER_COLUMNS = [
       { href: "/collections/generative", label: "GENERATIVE" },
       { href: "/collections/hybride", label: "HYBRIDE" },
       { href: "/produits", label: "Tous les modèles" },
+      { href: "/lookbook", label: "Lookbook" },
     ],
   },
   {

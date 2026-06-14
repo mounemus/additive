@@ -41,22 +41,22 @@ export function HeroSection({ content }: { content: HeroContent }) {
           onError={() => setVideoFailed(true)}
         />
       ) : (
-        <HeroCanvas className="absolute inset-0 h-full w-full" />
+        // Sans vidéo : rendu IA plein cadre + lattice animé en surimpression.
+        <>
+          <Image
+            src="/images/editorial/hero-frame.png"
+            alt=""
+            fill
+            priority
+            aria-hidden
+            className="object-cover object-center"
+            sizes="100vw"
+          />
+          <HeroCanvas className="absolute inset-0 h-full w-full opacity-40 mix-blend-screen" />
+        </>
       )}
-      {/* Rendu IA de monture, ancré à droite (desktop) */}
-      <div className="absolute inset-y-0 right-0 hidden w-3/5 lg:block">
-        <Image
-          src="/images/editorial/hero-frame.png"
-          alt=""
-          fill
-          priority
-          aria-hidden
-          className="object-cover object-center opacity-80"
-          sizes="60vw"
-        />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/85" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/25" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/85" />
 
       <motion.div
         style={reduce ? undefined : { y: yTitle, opacity }}

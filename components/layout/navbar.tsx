@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X, ArrowUpRight, Search, User, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,9 @@ const NAV_LINKS = [
   { href: "/collections", label: "Collections" },
   { href: "/produits", label: "Modèles" },
   { href: "/personnalisation", label: "Personnalisation" },
+  { href: "/lookbook", label: "Lookbook" },
   { href: "/technologie", label: "Technologie" },
   { href: "/manifeste", label: "Manifeste" },
-  { href: "/about", label: "À propos" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -55,7 +55,7 @@ export function Navbar() {
       <div className="container flex h-16 items-center justify-between md:h-20">
         <Logo />
 
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Navigation principale">
+        <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigation principale">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -72,8 +72,29 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden lg:block">
-          <Link href="/personnalisation">
+        <div className="hidden items-center gap-1 lg:flex">
+          <Link
+            href="/produits"
+            aria-label="Rechercher des modèles"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+          >
+            <Search className="h-[18px] w-[18px]" />
+          </Link>
+          <Link
+            href="/account"
+            aria-label="Compte"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+          >
+            <User className="h-[18px] w-[18px]" />
+          </Link>
+          <Link
+            href="/cart"
+            aria-label="Panier"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+          >
+            <ShoppingBag className="h-[18px] w-[18px]" />
+          </Link>
+          <Link href="/personnalisation" className="ml-2">
             <Button size="sm" className="gap-1.5">
               Créer ma monture
               <ArrowUpRight className="h-3.5 w-3.5" />
