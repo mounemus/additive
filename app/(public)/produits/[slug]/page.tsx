@@ -3,7 +3,7 @@ import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetails } from "@/components/product/product-details";
 import { Model3DViewer } from "@/components/product/model-3d-viewer";
-import { ModulairExplodedCompact } from "@/components/configurator/modulair-exploded-compact";
+import { ModulairVideo } from "@/components/configurator/modulair-video";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/product/product-grid";
@@ -126,7 +126,9 @@ export default async function ProductPage({
                 </Button>
               </Link>
             </div>
-            <ModulairExplodedCompact className="text-foreground" />
+            <div className="aspect-[16/10] overflow-hidden rounded-3xl border border-border bg-gradient-to-b from-surface to-background">
+              <ModulairVideo />
+            </div>
           </div>
         </section>
       )}

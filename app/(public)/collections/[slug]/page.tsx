@@ -6,7 +6,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { ProductGrid } from "@/components/product/product-grid";
 import { CTASection } from "@/components/sections/cta-section";
-import { ModulairExploded } from "@/components/sections/modulair-exploded";
+import { ModulairVideoSection } from "@/components/configurator/modulair-video";
 import { Button } from "@/components/ui/button";
 import { getCollection, getProducts } from "@/lib/catalog";
 import { buildMetadata } from "@/lib/seo";
@@ -115,7 +115,7 @@ export default async function CollectionPage({
         </section>
       )}
 
-      {collection.slug === "modulair" && <ModulairExploded />}
+      {collection.slug === "modulair" && <ModulairVideoSection />}
 
       {collection.slug === "modulair" && (
         <section className="pb-20 pt-20">
