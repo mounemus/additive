@@ -6,6 +6,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { ProductGrid } from "@/components/product/product-grid";
 import { CTASection } from "@/components/sections/cta-section";
+import { ModulairExploded } from "@/components/sections/modulair-exploded";
 import { Button } from "@/components/ui/button";
 import { getCollection, getProducts } from "@/lib/catalog";
 import { buildMetadata } from "@/lib/seo";
@@ -114,8 +115,10 @@ export default async function CollectionPage({
         </section>
       )}
 
+      {collection.slug === "modulair" && <ModulairExploded />}
+
       {collection.slug === "modulair" && (
-        <section className="pb-20">
+        <section className="pb-20 pt-20">
           <div className="container">
             <FadeIn>
               <div className="section-dark flex flex-col items-start gap-5 rounded-3xl border border-border p-8 md:flex-row md:items-center md:justify-between md:p-12">
