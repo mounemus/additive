@@ -3,6 +3,9 @@ import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetails } from "@/components/product/product-details";
 import { Model3DViewer } from "@/components/product/model-3d-viewer";
+import { ModulairExplodedCompact } from "@/components/configurator/modulair-exploded-compact";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/product/product-grid";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -102,6 +105,28 @@ export default async function ProductPage({
                 {product.description}
               </p>
             </FadeIn>
+          </div>
+        </section>
+      )}
+
+      {product.collection?.slug === "modulair" && (
+        <section className="border-t border-border py-16 md:py-20">
+          <div className="container grid items-center gap-10 lg:grid-cols-[1fr_1.2fr]">
+            <div>
+              <p className="eyebrow mb-3">Système modulaire</p>
+              <h2 className="font-display text-display-md font-bold">Une monture qui se compose.</h2>
+              <p className="mt-4 leading-relaxed text-muted">
+                {product.name} appartient à MODUL’AIR : face, branches et verres
+                sont interchangeables. Réparez, faites évoluer ou recolorez un
+                module sans racheter la paire.
+              </p>
+              <Link href="/personnalisation/modulair" className="mt-7 inline-block">
+                <Button size="lg" className="gap-2">
+                  <Sparkles className="h-4 w-4" /> Moduler cette base
+                </Button>
+              </Link>
+            </div>
+            <ModulairExplodedCompact className="text-foreground" />
           </div>
         </section>
       )}
