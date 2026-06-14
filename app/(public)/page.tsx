@@ -8,6 +8,7 @@ import { CustomizationSteps } from "@/components/sections/customization-steps";
 import { TechnologySection } from "@/components/sections/technology-section";
 import { ManifestoSection } from "@/components/sections/manifesto-section";
 import { ManifestoBand } from "@/components/sections/manifesto-band";
+import { ScrollThread } from "@/components/sections/scroll-thread";
 import { ProcessSequence } from "@/components/sections/process-sequence";
 import { MatterBand } from "@/components/sections/matter-band";
 import { CTASection } from "@/components/sections/cta-section";
@@ -51,7 +52,10 @@ export default async function HomePage() {
         ]}
       />
 
-      {/* 2. Manifeste de marque — Votre visage n'est pas standard */}
+      {/* 2. Fil rouge animé piloté au scroll (build → rotate → explode → print) */}
+      <ScrollThread />
+
+      {/* 3. Manifeste de marque — visuel + texte */}
       <ManifestoBand />
 
       {/* 3. Collections principales */}
