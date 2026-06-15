@@ -6,9 +6,9 @@ import { CollectionCard } from "@/components/product/collection-card";
 import { ProductGrid } from "@/components/product/product-grid";
 import { CustomizationSteps } from "@/components/sections/customization-steps";
 import { TechnologySection } from "@/components/sections/technology-section";
-import { ManifestoSection } from "@/components/sections/manifesto-section";
 import { ManifestoBand } from "@/components/sections/manifesto-band";
 import { ScrollThread } from "@/components/sections/scroll-thread";
+// ManifestoSection vit désormais sur /manifeste (retiré de l'accueil pour éviter le doublon éditorial)
 import { ProcessSequence } from "@/components/sections/process-sequence";
 import { MatterBand } from "@/components/sections/matter-band";
 import { CTASection } from "@/components/sections/cta-section";
@@ -54,14 +54,14 @@ export default async function HomePage() {
         ]}
       />
 
-      {/* 2. Fil rouge animé piloté au scroll (build → rotate → explode → print) */}
+      {/* 2. Fil rouge 3D piloté au scroll — la pièce maîtresse (conception → identité) */}
       <ScrollThread modelUrl={media.scrollModel} />
 
-      {/* 3. Manifeste de marque — visuel + texte */}
+      {/* 3. Positionnement — « Votre visage n'est pas standard » */}
       <ManifestoBand />
 
-      {/* 3. Collections principales */}
-      <section className="pb-24 md:pb-32">
+      {/* 4. Découverte produit : collections + silhouettes vedettes (un même bloc) */}
+      <section className="py-20 md:py-28">
         <div className="container">
           <div className="mb-12 flex items-end justify-between gap-6">
             <div>
@@ -86,22 +86,8 @@ export default async function HomePage() {
               <CollectionCard key={c.slug} collection={c} index={i} />
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* 4. Séquence process — SCAN → DESIGN → PRINT → FINISH → WEAR */}
-      <ProcessSequence videoSrc={media.processVideo} />
-
-      {/* 5. Bloc personnalisation */}
-      <CustomizationSteps compact />
-
-      {/* 6. Technologie */}
-      <TechnologySection content={technology} compact />
-
-      {/* 6. Produits vedettes */}
-      <section className="py-24 md:py-32">
-        <div className="container">
-          <div className="mb-12 flex items-end justify-between gap-6">
+          <div className="mb-10 mt-20 flex items-end justify-between gap-6">
             <div>
               <FadeIn>
                 <p className="eyebrow mb-4">Modèles vedettes</p>
@@ -123,13 +109,19 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 7. Section matière */}
+      {/* 5. Comment c'est fait — ancrage sombre (SCAN → DESIGN → PRINT → FINISH → WEAR) */}
+      <ProcessSequence videoSrc={media.processVideo} />
+
+      {/* 6. La matière — nylon PA12, faits vérifiables */}
       <MatterBand />
 
-      {/* 8. Expérience de marque (éditorial) */}
-      <ManifestoSection />
+      {/* 7. La technologie */}
+      <TechnologySection content={technology} compact />
 
-      {/* 8. CTA final */}
+      {/* 8. Personnalisation — le parcours, juste avant la conversion */}
+      <CustomizationSteps compact />
+
+      {/* 9. CTA final — ancrage sombre */}
       <CTASection title={cta.title} button={cta.button} />
     </>
   );

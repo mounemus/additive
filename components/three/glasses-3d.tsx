@@ -31,7 +31,7 @@ function Model({ progress, url }: { progress: MutableRefObject<number>; url: str
         m.receiveShadow = true;
       }
     });
-    return { scale: 3.4 / maxDim };
+    return { scale: 4.3 / maxDim };
   }, [scene]);
 
   useFrame((state) => {

@@ -17,7 +17,7 @@ const LINES = [
 export function ManifestoBand() {
   const reduce = useReducedMotion();
   return (
-    <section className="overflow-hidden py-24 md:py-32">
+    <section className="overflow-hidden py-20 md:py-28">
       <div className="container grid items-center gap-12 lg:grid-cols-[1.25fr_1fr]">
         <div>
           <h2 className="font-display text-display-lg font-bold leading-[0.95]">

@@ -20,7 +20,7 @@ export const CUSTOMIZATION_STEPS = [
 export function CustomizationSteps({ compact = false }: { compact?: boolean }) {
   const steps = compact ? CUSTOMIZATION_STEPS.slice(0, 6) : CUSTOMIZATION_STEPS;
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-20 md:py-28">
       <div className="container">
         <div className="grid items-start gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div className="lg:sticky lg:top-28">

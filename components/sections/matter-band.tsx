@@ -12,7 +12,7 @@ const POINTS = [
 /** Section matière — nylon PA12 / fabrication additive (faits vérifiables). */
 export function MatterBand() {
   return (
-    <section className="overflow-hidden py-24 md:py-32">
+    <section className="overflow-hidden py-20 md:py-28">
       <div className="container">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <RevealImage
