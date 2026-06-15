@@ -121,8 +121,8 @@ export default async function HomePage() {
       {/* 8. Personnalisation — le parcours, juste avant la conversion */}
       <CustomizationSteps compact />
 
-      {/* 9. CTA final — ancrage sombre */}
-      <CTASection title={cta.title} button={cta.button} />
+      {/* 9. CTA final — ancrage sombre + monture 3D éclatée en arrière-plan */}
+      <CTASection title={cta.title} button={cta.button} modelUrl={media.scrollModel} withExploded3D />
     </>
   );
 }

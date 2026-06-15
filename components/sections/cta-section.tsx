@@ -4,27 +4,36 @@ import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { MagneticButton } from "@/components/motion/magnetic-button";
+import { ExplodedBackdrop } from "@/components/sections/exploded-backdrop";
 
 export function CTASection({
   title,
   button,
   href = "/personnalisation",
+  modelUrl,
+  withExploded3D = false,
 }: {
   title: string;
   button: string;
   href?: string;
+  modelUrl?: string;
+  withExploded3D?: boolean;
 }) {
   return (
     <section className="section-dark relative overflow-hidden py-28 md:py-40">
-      <div
-        aria-hidden
-        className="absolute inset-0 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            "linear-gradient(var(--accent-blue) 1px, transparent 1px), linear-gradient(90deg, var(--accent-blue) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-        }}
-      />
+      {withExploded3D ? (
+        <ExplodedBackdrop modelUrl={modelUrl} />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "linear-gradient(var(--accent-blue) 1px, transparent 1px), linear-gradient(90deg, var(--accent-blue) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+          }}
+        />
+      )}
       <div className="container relative text-center">
         <AnimatedText
           text={title}

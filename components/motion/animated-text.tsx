@@ -24,8 +24,7 @@ export function AnimatedText({ text, className, as: Tag = "h2", delay = 0 }: Ani
           <motion.span
             className="inline-block"
             initial={{ y: "110%" }}
-            whileInView={{ y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
+            animate={{ y: 0 }}
             transition={{
               duration: 0.65,
               delay: delay + i * 0.045,
