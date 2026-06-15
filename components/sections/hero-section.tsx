@@ -17,7 +17,15 @@ type HeroContent = {
   ctaSecondary: string;
 };
 
-export function HeroSection({ content }: { content: HeroContent }) {
+export function HeroSection({
+  content,
+  videoSrc = "/videos/hero.mp4",
+  posterSrc = "/images/editorial/hero-frame.png",
+}: {
+  content: HeroContent;
+  videoSrc?: string;
+  posterSrc?: string;
+}) {
   const reduce = useReducedMotion();
   const [videoFailed, setVideoFailed] = useState(false);
   const { scrollY } = useScroll();
@@ -32,7 +40,7 @@ export function HeroSection({ content }: { content: HeroContent }) {
       {showVideo ? (
         <video
           className="absolute inset-0 h-full w-full object-cover"
-          src="/videos/hero.mp4"
+          src={videoSrc}
           autoPlay
           muted
           loop
@@ -44,11 +52,13 @@ export function HeroSection({ content }: { content: HeroContent }) {
         // Sans vidéo : rendu IA plein cadre + lattice animé en surimpression.
         <>
           <Image
-            src="/images/editorial/hero-frame.png"
+            src={posterSrc}
             alt=""
             fill
             priority
             aria-hidden
+            // URL externe arbitraire possible (CMS) → on évite l'optimiseur
+            unoptimized={/^https?:\/\//.test(posterSrc)}
             className="object-cover object-center"
             sizes="100vw"
           />

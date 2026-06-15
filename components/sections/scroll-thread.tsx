@@ -22,7 +22,7 @@ const Glasses3D = dynamic(
   }
 );
 
-export function ScrollThread() {
+export function ScrollThread({ modelUrl }: { modelUrl?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
@@ -38,7 +38,7 @@ export function ScrollThread() {
       <div className="sticky top-0 h-screen overflow-hidden">
         {/* Scène 3D plein cadre */}
         <div className="absolute inset-0">
-          <Glasses3D progressRef={progressRef} />
+          <Glasses3D progressRef={progressRef} modelUrl={modelUrl} />
         </div>
         <div
           className="pointer-events-none absolute inset-0"

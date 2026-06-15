@@ -14,7 +14,7 @@ const STEPS = [
   { id: "wear", label: "WEAR", icon: Glasses, body: "Montée, contrôlée, livrée — prête à être portée." },
 ];
 
-export function ProcessSequence() {
+export function ProcessSequence({ videoSrc = "/videos/print-layers.mp4" }: { videoSrc?: string }) {
   const reduce = useReducedMotion();
   const [videoOk, setVideoOk] = useState(true);
 
@@ -24,7 +24,7 @@ export function ProcessSequence() {
       {!reduce && videoOk && (
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-40"
-          src="/videos/print-layers.mp4"
+          src={videoSrc}
           autoPlay
           muted
           loop

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { buildMetadata } from "@/lib/seo";
+import { SiteThemeStyle } from "@/components/site-theme";
 import "./globals.css";
 
 const inter = Inter({
@@ -24,6 +25,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+      <head>
+        <SiteThemeStyle />
+      </head>
       <body className="font-sans">{children}</body>
     </html>
   );

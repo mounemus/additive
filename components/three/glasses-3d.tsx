@@ -12,8 +12,8 @@ const MODEL_URL = "/models/hybride.glb";
  * au scroll + auto-spin, reflets de marque (Lightformers, sans dépendance réseau).
  * À importer dynamiquement avec ssr:false (R3F v8 incompatible SSR).
  */
-function Model({ progress }: { progress: MutableRefObject<number> }) {
-  const { scene } = useGLTF(MODEL_URL);
+function Model({ progress, url }: { progress: MutableRefObject<number>; url: string }) {
+  const { scene } = useGLTF(url);
   const ref = useRef<THREE.Group>(null);
 
   // Normalise n'importe quel GLB : centré à l'origine, taille cible ~3 unités.
@@ -51,7 +51,13 @@ function Model({ progress }: { progress: MutableRefObject<number> }) {
   );
 }
 
-export function Glasses3D({ progressRef }: { progressRef: MutableRefObject<number> }) {
+export function Glasses3D({
+  progressRef,
+  modelUrl = MODEL_URL,
+}: {
+  progressRef: MutableRefObject<number>;
+  modelUrl?: string;
+}) {
   return (
     <Canvas
       camera={{ position: [0, 0.2, 6.2], fov: 32 }}
@@ -67,7 +73,7 @@ export function Glasses3D({ progressRef }: { progressRef: MutableRefObject<numbe
 
       <Suspense fallback={null}>
         <Float speed={1.1} rotationIntensity={0.15} floatIntensity={0.4}>
-          <Model progress={progressRef} />
+          <Model progress={progressRef} url={modelUrl} />
         </Float>
         {/* Reflets studio générés par lightformers — aucune ressource réseau */}
         <Environment resolution={256}>

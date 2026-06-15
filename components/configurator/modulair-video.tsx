@@ -7,10 +7,18 @@ import { AnimatedText } from "@/components/motion/animated-text";
 import { cn } from "@/lib/utils";
 
 /** Lecteur vidéo de la vraie monture MODUL'AIR (auto, boucle, muet). */
-export function ModulairVideo({ className, contain = true }: { className?: string; contain?: boolean }) {
+export function ModulairVideo({
+  className,
+  contain = true,
+  src = "/videos/modulair-exploded.mp4",
+}: {
+  className?: string;
+  contain?: boolean;
+  src?: string;
+}) {
   return (
     <video
-      src="/videos/modulair-exploded.mp4"
+      src={src}
       autoPlay
       loop
       muted

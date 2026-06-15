@@ -16,11 +16,12 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { Button } from "@/components/ui/button";
 import { getCollections, getProducts, getContent } from "@/lib/catalog";
+import { getMedia } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [hero, technology, cta, collections, featured] =
+  const [hero, technology, cta, collections, featured, media] =
     await Promise.all([
       getContent<{
         eyebrow: string;
@@ -35,12 +36,13 @@ export default async function HomePage() {
       getContent<{ title: string; button: string }>("cta"),
       getCollections(),
       getProducts({ featuredOnly: true }),
+      getMedia(),
     ]);
 
   return (
     <>
       {/* 1. Hero cinématique */}
-      <HeroSection content={hero} />
+      <HeroSection content={hero} videoSrc={media.heroVideo} posterSrc={media.heroPoster} />
 
       <Marquee
         items={[
@@ -53,7 +55,7 @@ export default async function HomePage() {
       />
 
       {/* 2. Fil rouge animé piloté au scroll (build → rotate → explode → print) */}
-      <ScrollThread />
+      <ScrollThread modelUrl={media.scrollModel} />
 
       {/* 3. Manifeste de marque — visuel + texte */}
       <ManifestoBand />
@@ -88,7 +90,7 @@ export default async function HomePage() {
       </section>
 
       {/* 4. Séquence process — SCAN → DESIGN → PRINT → FINISH → WEAR */}
-      <ProcessSequence />
+      <ProcessSequence videoSrc={media.processVideo} />
 
       {/* 5. Bloc personnalisation */}
       <CustomizationSteps compact />

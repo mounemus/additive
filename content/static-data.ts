@@ -468,4 +468,18 @@ export const SITE_CONTENT: Record<string, unknown> = {
     seoDescription:
       "Lunetterie modulaire imprimée en 3D à Montréal. Design paramétrique, nylon PA12, personnalisation morphologique, production à la demande.",
   },
+  theme: {
+    additiveBlue: "#1557ff",
+    electricBlue: "#276cff",
+    signalOrange: "#ff5a36",
+    ink: "#0b0d10",
+    paper: "#faf9f5",
+  },
+  media: {
+    heroVideo: "/videos/hero.mp4",
+    heroPoster: "/images/editorial/hero-frame.png",
+    scrollModel: "/models/hybride.glb",
+    modulairVideo: "/videos/modulair-exploded.mp4",
+    processVideo: "/videos/print-layers.mp4",
+  },
 };

@@ -11,6 +11,7 @@ import {
   Inbox,
   Settings,
   Wand2,
+  Palette,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ const NAV = [
   { href: "/admin/products", label: "Produits", icon: Glasses },
   { href: "/admin/collections", label: "Collections", icon: Layers },
   { href: "/admin/media", label: "Médias", icon: ImageIcon },
+  { href: "/admin/appearance", label: "Apparence", icon: Palette },
   { href: "/admin/content", label: "Contenus", icon: FileText },
   { href: "/admin/configurator", label: "Configurateur", icon: Wand2 },
   { href: "/admin/contact-requests", label: "Demandes", icon: Inbox },
