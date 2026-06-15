@@ -11,9 +11,23 @@ const ExplodedScene = dynamic(
  * Arrière-plan « vue éclatée 3D » + dégradé neutre, à placer en absolute derrière
  * le contenu d'une section sombre. Non interactif (pointer-events-none).
  */
-export function ExplodedBackdrop({ modelUrl }: { modelUrl?: string }) {
+export function ExplodedBackdrop({
+  modelUrl,
+  imageSrc,
+}: {
+  modelUrl?: string;
+  imageSrc?: string;
+}) {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Base : arrière-plan « fade neutre » généré (Nano Banana) */}
+      {imageSrc && (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-70"
+          style={{ backgroundImage: `url(${imageSrc})` }}
+        />
+      )}
+      {/* Monture 3D éclatée par-dessus, faible opacité */}
       <div className="absolute inset-0 opacity-[0.5]">
         <ExplodedScene modelUrl={modelUrl} />
       </div>

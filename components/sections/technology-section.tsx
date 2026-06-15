@@ -19,8 +19,15 @@ export function TechnologySection({
 }) {
   const blocks = compact ? content.blocks.slice(0, 6) : content.blocks;
   return (
-    <section className="section-dark py-24 md:py-32">
-      <div className="container">
+    <section className="section-dark relative overflow-hidden py-24 md:py-32">
+      {/* Arrière-plan « fade neutre » généré (Nano Banana) */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-cover bg-center opacity-60"
+        style={{ backgroundImage: "url(/images/bg/tech-neutral.png)" }}
+      />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-[#0b0d10] via-[#0b0d10]/55 to-[#0b0d10]" />
+      <div className="container relative">
         <FadeIn>
           <p className="eyebrow mb-4">Technologie</p>
         </FadeIn>

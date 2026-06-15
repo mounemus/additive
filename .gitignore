@@ -45,3 +45,5 @@ yarn-error.log*
 /remotion-hero/.remotion
 
 .vercel
+
+.env*

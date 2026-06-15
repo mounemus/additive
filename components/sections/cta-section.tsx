@@ -22,7 +22,7 @@ export function CTASection({
   return (
     <section className="section-dark relative overflow-hidden py-28 md:py-40">
       {withExploded3D ? (
-        <ExplodedBackdrop modelUrl={modelUrl} />
+        <ExplodedBackdrop modelUrl={modelUrl} imageSrc="/images/bg/cta-neutral.png" />
       ) : (
         <div
           aria-hidden
