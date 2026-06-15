@@ -16,9 +16,13 @@ function Model({ progress, url }: { progress: MutableRefObject<number>; url: str
   const { scene } = useGLTF(url);
   const ref = useRef<THREE.Group>(null);
 
+  // IMPORTANT : useGLTF met la scène en cache et la PARTAGE entre tous les
+  // consommateurs. On clone pour avoir nos propres transforms (sinon un autre
+  // composant qui mute la scène casse ce rendu). Les géométries restent partagées.
+  const clone = useMemo(() => scene.clone(true), [scene]);
+
   // Normalise n'importe quel GLB : centré à l'origine, taille cible ~3 unités.
   const fit = useMemo(() => {
-    const clone = scene;
     const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
@@ -32,7 +36,7 @@ function Model({ progress, url }: { progress: MutableRefObject<number>; url: str
       }
     });
     return { scale: 4.3 / maxDim };
-  }, [scene]);
+  }, [clone]);
 
   useFrame((state) => {
     if (!ref.current) return;
@@ -46,7 +50,7 @@ function Model({ progress, url }: { progress: MutableRefObject<number>; url: str
 
   return (
     <group ref={ref}>
-      <primitive object={scene} />
+      <primitive object={clone} />
     </group>
   );
 }

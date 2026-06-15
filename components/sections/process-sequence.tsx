@@ -18,10 +18,19 @@ export function ProcessSequence({ videoSrc = "/videos/print-layers.mp4" }: { vid
   const reduce = useReducedMotion();
   const [videoOk, setVideoOk] = useState(true);
 
+  // On n'affiche une vidéo de fond QUE si une vidéo personnalisée est définie
+  // (CMS) — l'ancien rendu « fil de fer » naïf (print-layers) est retiré.
+  const showVideo = !reduce && videoOk && !!videoSrc && !videoSrc.includes("print-layers");
+
   return (
     <section className="section-dark relative overflow-hidden py-20 md:py-28">
-      {/* Fond : vidéo « impression couche par couche » (remplaçable) + lattice */}
-      {!reduce && videoOk && (
+      {/* Fond : texture matière générée (Nano Banana) + lattice abstrait */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-cover bg-center opacity-45"
+        style={{ backgroundImage: "url(/images/bg/matter-neutral.png)" }}
+      />
+      {showVideo && (
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-40"
           src={videoSrc}
@@ -33,7 +42,7 @@ export function ProcessSequence({ videoSrc = "/videos/print-layers.mp4" }: { vid
           onError={() => setVideoOk(false)}
         />
       )}
-      <GenerativeBackground className="absolute inset-0 h-full w-full opacity-30" color="77,140,255" density={48} />
+      <GenerativeBackground className="absolute inset-0 h-full w-full opacity-25" color="77,140,255" density={40} />
       <div className="absolute inset-0 bg-gradient-to-b from-[#0b0d10] via-transparent to-[#0b0d10]" />
 
       <div className="container relative">

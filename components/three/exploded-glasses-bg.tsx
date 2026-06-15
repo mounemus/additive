@@ -16,16 +16,21 @@ function ExplodedModel({ modelUrl }: { modelUrl: string }) {
   const { scene } = useGLTF(modelUrl);
   const group = useRef<THREE.Group>(null);
 
+  // Clone : useGLTF partage la scène en cache. Comme on mute les positions des
+  // mailles à chaque frame (éclatement), il FAUT notre propre copie, sinon on
+  // casse les autres rendus de ce modèle (ex. le fil rouge 3D).
+  const clone = useMemo(() => scene.clone(true), [scene]);
+
   const data = useMemo(() => {
-    const box = new THREE.Box3().setFromObject(scene);
+    const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    scene.position.sub(center);
-    scene.updateMatrixWorld(true);
+    clone.position.sub(center);
+    clone.updateMatrixWorld(true);
 
     const parts: { mesh: THREE.Mesh; base: THREE.Vector3; dir: THREE.Vector3 }[] = [];
-    scene.traverse((o) => {
+    clone.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       const wc = new THREE.Vector3();
@@ -34,7 +39,7 @@ function ExplodedModel({ modelUrl }: { modelUrl: string }) {
       parts.push({ mesh: m, base: m.position.clone(), dir });
     });
     return { parts, scale: 3.2 / maxDim };
-  }, [scene]);
+  }, [clone]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -50,7 +55,7 @@ function ExplodedModel({ modelUrl }: { modelUrl: string }) {
 
   return (
     <group ref={group} scale={data.scale}>
-      <primitive object={scene} />
+      <primitive object={clone} />
     </group>
   );
 }
