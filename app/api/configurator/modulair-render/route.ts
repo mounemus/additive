@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { modulairSelectionSchema } from "@/lib/validations";
 import { buildModulairPromptFr, type ModulairSelection } from "@/lib/modulair";
 import { generateImage } from "@/lib/ai/image-provider";
+import { guard, RULES } from "@/lib/rate-limit";
+
+// Génération d'image : durée bornée explicitement.
+export const maxDuration = 60;
 
 /**
  * Rendu studio IA d'une combinaison MODUL'AIR (face × branches × couleurs ×
@@ -9,6 +13,9 @@ import { generateImage } from "@/lib/ai/image-provider";
  * (le configurateur garde son aperçu SVG composé côté client).
  */
 export async function POST(req: Request) {
+  const limited = await guard(req, "ai", RULES.ai);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

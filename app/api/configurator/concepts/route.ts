@@ -13,6 +13,10 @@ import {
 import { getPricingConfig } from "@/lib/configurator-settings";
 import { generateImage } from "@/lib/ai/image-provider";
 import { demoConceptSvg } from "@/lib/ai/demo-visuals";
+import { guard, RULES } from "@/lib/rate-limit";
+
+// 3 générations d'images en parallèle : durée bornée explicitement.
+export const maxDuration = 60;
 
 /**
  * Génère 3 concepts MAXIMUM, cohérents avec le moodboard (même palette/matière)
@@ -22,6 +26,9 @@ import { demoConceptSvg } from "@/lib/ai/demo-visuals";
  * Les meilleurs taux de correspondance sont renvoyés en tête.
  */
 export async function POST(req: Request) {
+  const limited = await guard(req, "ai", RULES.ai);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

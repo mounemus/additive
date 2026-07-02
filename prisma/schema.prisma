@@ -136,3 +136,13 @@ model AdminUser {
   role      String   @default("admin")
   createdAt DateTime @default(now())
 }
+
+// Fenêtres de rate-limit (clé = scope:identifiant:fenêtre). Nettoyage
+// opportuniste des fenêtres expirées à l'écriture — pas de cron requis.
+model RateLimitWindow {
+  key     String   @id
+  count   Int      @default(1)
+  resetAt DateTime
+
+  @@index([resetAt])
+}

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { contactSchema } from "@/lib/validations";
+import { guard, RULES } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const limited = await guard(req, "form", RULES.form);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

@@ -7,6 +7,11 @@ import {
   type StyleTag,
 } from "@/lib/configurator";
 import { generateWornPortrait } from "@/lib/ai/image-provider";
+import { guard, RULES } from "@/lib/rate-limit";
+import { sanitizePhotoDataUrl } from "@/lib/image-sanitize";
+
+// Édition photo IA : durée bornée explicitement.
+export const maxDuration = 60;
 
 const schema = z.object({
   conceptLabel: z.string().max(120),
@@ -22,6 +27,9 @@ const schema = z.object({
  * ou OpenAI /images/edits — jamais /images/generations. Sans IA, `unavailable`.
  */
 export async function POST(req: Request) {
+  const limited = await guard(req, "ai", RULES.ai);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();
@@ -31,6 +39,11 @@ export async function POST(req: Request) {
 
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "validation" }, { status: 422 });
+
+  // Photo du client : vérifie que c'est bien une image (magic bytes) et la
+  // ramène à 1024 px JPEG — réduit le payload provider et bloque les abus.
+  const cleanPhoto = await sanitizePhotoDataUrl(parsed.data.photo);
+  if (!cleanPhoto) return NextResponse.json({ error: "invalid_photo" }, { status: 422 });
 
   const styleTags = parsed.data.styleTags as StyleTag[];
   const tpl = conceptByLabel(parsed.data.conceptLabel);
@@ -52,7 +65,7 @@ export async function POST(req: Request) {
   const prompt = buildWornPortraitPromptFr(concept, styleTags, Boolean(parsed.data.conceptImage));
   const result = await generateWornPortrait({
     prompt,
-    photo: parsed.data.photo,
+    photo: cleanPhoto,
     conceptImage: parsed.data.conceptImage,
   });
 

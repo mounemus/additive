@@ -7,6 +7,10 @@ import {
   type StyleTag,
 } from "@/lib/configurator";
 import { generateFrameOverlay } from "@/lib/ai/image-provider";
+import { guard, RULES } from "@/lib/rate-limit";
+
+// Génération d'image : durée bornée explicitement.
+export const maxDuration = 60;
 
 const schema = z.object({
   conceptLabel: z.string().max(120),
@@ -21,6 +25,9 @@ const schema = z.object({
  * OpenAI, ou 'white' à détourer côté client pour Gemini). Sans IA → 503.
  */
 export async function POST(req: Request) {
+  const limited = await guard(req, "ai", RULES.ai);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

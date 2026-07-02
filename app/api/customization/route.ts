@@ -3,8 +3,12 @@ import { db } from "@/lib/db";
 import { customizationRequestSchema, quoteOptionsSchema } from "@/lib/validations";
 import { computeQuote } from "@/lib/configurator";
 import { getPricingConfig } from "@/lib/configurator-settings";
+import { guard, RULES } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const limited = await guard(req, "form", RULES.form);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

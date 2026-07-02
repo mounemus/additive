@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 
+import { guard, RULES } from "@/lib/rate-limit";
+
 const schema = z.object({ email: z.string().email() });
 
 /** Inscription à l'infolettre — stockée comme demande de type « newsletter ». */
 export async function POST(req: Request) {
+  const limited = await guard(req, "form", RULES.form);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

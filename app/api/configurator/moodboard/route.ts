@@ -8,6 +8,10 @@ import {
 } from "@/lib/configurator";
 import { generateImage } from "@/lib/ai/image-provider";
 import { demoMoodboardSvg } from "@/lib/ai/demo-visuals";
+import { guard, RULES } from "@/lib/rate-limit";
+
+// Génération d'image : durée bornée explicitement (plan Vercel Pro).
+export const maxDuration = 60;
 
 /**
  * Génère le moodboard éditorial. Si un fournisseur d'IA est configuré, il
@@ -16,6 +20,9 @@ import { demoMoodboardSvg } from "@/lib/ai/demo-visuals";
  * quel chemin a été pris — il reçoit simplement une image et un drapeau `ai`.
  */
 export async function POST(req: Request) {
+  const limited = await guard(req, "ai", RULES.ai);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();

@@ -33,6 +33,11 @@ function dataUrlToBase64(dataUrl: string): { mime: string; b64: string } | null 
   return { mime: m[1], b64: m[2] };
 }
 
+// Timeout de TOUT appel fournisseur : jamais de requête qui pend jusqu'au
+// timeout Vercel — l'échec bascule proprement sur le repli (autre provider/SVG).
+const PROVIDER_TIMEOUT_MS = 45_000;
+const providerSignal = () => AbortSignal.timeout(PROVIDER_TIMEOUT_MS);
+
 export async function generateImage(
   req: ImageGenRequest,
   task: ImageTask
@@ -74,6 +79,7 @@ async function openai(req: ImageGenRequest, key: string, model: string): Promise
       size: req.size ?? "1024x1024",
       n: 1,
     }),
+    signal: providerSignal(),
   });
   if (!res.ok) {
     console.error("[image-provider] openai status", res.status, await safeText(res));
@@ -118,6 +124,7 @@ async function geminiGenerate(
         contents: [{ parts }],
         generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
       }),
+      signal: providerSignal(),
     }
   );
   if (!res.ok) {
@@ -200,6 +207,7 @@ async function openaiEdit(
       method: "POST",
       headers: { Authorization: `Bearer ${key}` },
       body: form,
+      signal: providerSignal(),
     });
     if (!res.ok) {
       console.error("[image-provider] openai edits", res.status, await safeText(res));
@@ -226,7 +234,7 @@ async function toDataUrl(src: string): Promise<string | null> {
   if (src.startsWith("data:")) return src;
   if (!/^https?:\/\//.test(src)) return null;
   try {
-    const res = await fetch(src);
+    const res = await fetch(src, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) return null;
     const mime = res.headers.get("content-type")?.split(";")[0] || "image/png";
     if (!mime.startsWith("image/")) return null;
@@ -283,6 +291,7 @@ async function overlayOpenAI(
         background: "transparent",
         n: 1,
       }),
+      signal: providerSignal(),
     });
     if (res.ok) {
       const data = await res.json();
@@ -331,6 +340,7 @@ async function stability(req: ImageGenRequest, key: string, model?: string): Pro
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, Accept: "image/*" },
     body: form,
+    signal: providerSignal(),
   });
   if (!res.ok) {
     console.error("[image-provider] stability status", res.status, await safeText(res));
@@ -346,6 +356,7 @@ async function replicate(req: ImageGenRequest, key: string, model: string): Prom
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "wait" },
     body: JSON.stringify({ model: model || "black-forest-labs/flux-1.1-pro", input: { prompt: req.prompt } }),
+    signal: providerSignal(),
   });
   if (!create.ok) {
     console.error("[image-provider] replicate status", create.status, await safeText(create));
@@ -370,28 +381,33 @@ async function safeText(res: Response): Promise<string> {
  * Ne génère pas d'image — vérifie juste l'authentification.
  */
 export async function testProviderKey(providerId: string, key: string): Promise<{ ok: boolean; detail?: string }> {
+  const signal = AbortSignal.timeout(10_000); // test rapide, jamais bloquant
   try {
     if (providerId === "openai" || providerId === "openai-vision") {
       const r = await fetch("https://api.openai.com/v1/models", {
         headers: { Authorization: `Bearer ${key}` },
+        signal,
       });
       return { ok: r.ok, detail: r.ok ? "authentifié" : `http ${r.status}` };
     }
     if (providerId === "gemini") {
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`,
+        { signal }
       );
       return { ok: r.ok, detail: r.ok ? "authentifié" : `http ${r.status}` };
     }
     if (providerId === "stability") {
       const r = await fetch("https://api.stability.ai/v1/user/account", {
         headers: { Authorization: `Bearer ${key}` },
+        signal,
       });
       return { ok: r.ok, detail: r.ok ? "authentifié" : `http ${r.status}` };
     }
     if (providerId === "replicate") {
       const r = await fetch("https://api.replicate.com/v1/account", {
         headers: { Authorization: `Bearer ${key}` },
+        signal,
       });
       return { ok: r.ok, detail: r.ok ? "authentifié" : `http ${r.status}` };
     }

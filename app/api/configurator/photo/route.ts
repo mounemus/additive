@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { tempPhotoSchema } from "@/lib/validations";
 import { storeTempPhoto, deleteTempPhoto } from "@/lib/temp-photo";
+import { guard, RULES } from "@/lib/rate-limit";
+import { sanitizePhotoDataUrl } from "@/lib/image-sanitize";
 
 /**
  * Stockage TEMPORAIRE d'une image (capture, snapshot d'essayage, portrait),
@@ -8,6 +10,9 @@ import { storeTempPhoto, deleteTempPhoto } from "@/lib/temp-photo";
  * Renvoie un token ; la suppression « Supprimer ma photo » se fait par DELETE.
  */
 export async function POST(req: Request) {
+  const limited = await guard(req, "photo", RULES.photo);
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await req.json();
@@ -18,7 +23,12 @@ export async function POST(req: Request) {
   const parsed = tempPhotoSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "validation" }, { status: 422 });
 
-  const token = await storeTempPhoto(parsed.data.dataUrl, parsed.data.kind);
+  // Image réelle uniquement (magic bytes), redimensionnée 1024 px et
+  // réencodée JPEG : la base ne stocke plus jamais 8 Mo par photo.
+  const clean = await sanitizePhotoDataUrl(parsed.data.dataUrl);
+  if (!clean) return NextResponse.json({ error: "invalid_photo" }, { status: 422 });
+
+  const token = await storeTempPhoto(clean, parsed.data.kind);
   if (!token) return NextResponse.json({ error: "unavailable" }, { status: 503 });
   return NextResponse.json({ ok: true, token }, { status: 201 });
 }

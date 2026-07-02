@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { seal, open } from "@/lib/secret-box";
 import {
   DEFAULT_PRICING,
   DEFAULT_PROVIDERS,
@@ -61,10 +62,11 @@ export async function getTaskConfig(task: ImageTask): Promise<TaskAssignment> {
   return { provider: t?.provider ?? "demo", model: t?.model ?? "gpt-image-1" };
 }
 
-/** Récupère une clé : config admin d'abord, variable d'environnement sinon. */
+/** Récupère une clé : config admin d'abord, variable d'environnement sinon.
+ *  Les clés en base sont scellées (AES-GCM) — `open()` gère aussi l'héritage clair. */
 export async function getProviderKey(providerId: string): Promise<string | null> {
   const cfg = await getProvidersConfig();
-  const fromAdmin = cfg.keys?.[providerId];
+  const fromAdmin = cfg.keys?.[providerId] ? open(cfg.keys[providerId]) : "";
   if (fromAdmin && fromAdmin.trim()) return fromAdmin.trim();
   const entry = PROVIDER_CATALOG.find((p) => p.id === providerId);
   const fromEnv = entry ? process.env[entry.keyEnv] : undefined;
@@ -75,7 +77,7 @@ export async function getProviderKey(providerId: string): Promise<string | null>
 export async function getProvidersStatus() {
   const cfg = await getProvidersConfig();
   const providers = PROVIDER_CATALOG.map((p) => {
-    const key = cfg.keys?.[p.id] || process.env[p.keyEnv] || "";
+    const key = (cfg.keys?.[p.id] ? open(cfg.keys[p.id]) : "") || process.env[p.keyEnv] || "";
     return {
       id: p.id,
       label: p.label,
@@ -120,10 +122,17 @@ export async function saveConsentText(value: unknown) {
 export async function saveProvidersConfig(partial: Partial<ProvidersConfig>) {
   const current = await getProvidersConfig();
   // Fusion des clés : une clé vide n'écrase pas une clé existante.
-  const keys = { ...current.keys };
+  // Chaque clé (nouvelle OU héritée en clair) est SCELLÉE avant persistance.
+  const keys: Record<string, string> = {};
+  for (const [id, val] of Object.entries(current.keys ?? {})) {
+    if (!val || !val.trim()) continue;
+    const opened = open(val.trim());
+    // Si le déchiffrement est impossible (secret absent), on conserve le blob tel quel.
+    keys[id] = opened ? seal(opened) : val.trim();
+  }
   if (partial.keys) {
     for (const [id, val] of Object.entries(partial.keys)) {
-      if (val && val.trim()) keys[id] = val.trim();
+      if (val && val.trim()) keys[id] = seal(val.trim());
     }
   }
   // Fusion des tâches.
