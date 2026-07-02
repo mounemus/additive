@@ -27,10 +27,10 @@ export function RevealImage({
     <div className={cn("relative overflow-hidden", className)}>
       <motion.div
         className="relative h-full w-full"
-        initial={reduce ? false : { scale: 1.12 }}
+        initial={reduce ? false : { scale: 1.08 }}
         whileInView={{ scale: 1 }}
-        viewport={{ once: true, margin: "-80px" }}
-        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
         <Image
           src={src}
@@ -47,8 +47,8 @@ export function RevealImage({
           className="absolute inset-0 z-10 bg-background"
           initial={{ scaleY: 1 }}
           whileInView={{ scaleY: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.55, ease: [0.76, 0, 0.24, 1] }}
           style={{ transformOrigin: "top" }}
         />
       )}

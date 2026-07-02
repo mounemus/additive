@@ -40,7 +40,7 @@ export function Footer() {
   return (
     <footer className="section-dark border-t border-border">
       {/* Bandeau signature éditorial */}
-      <div className="container border-b border-border py-16 md:py-24">
+      <div className="container border-b border-border py-12 md:py-16">
         <div className="grid items-end gap-10 md:grid-cols-[1.6fr_1fr]">
           <p className="max-w-3xl text-balance font-display text-display-md font-bold leading-[1.05]">
             Pas conçues pour tout le monde.
@@ -90,7 +90,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 border-t border-border pt-8 text-xs text-muted md:flex-row md:items-center md:justify-between">
+        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-8 text-xs text-muted md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} ADDITIVE. Tous droits réservés.</p>
           <div className="flex items-center gap-5">
             <Link href="/contact" className="hover:text-foreground">Livraison &amp; retours</Link>

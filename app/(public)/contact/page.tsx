@@ -19,7 +19,7 @@ export default function ContactPage({
   searchParams: { type?: string };
 }) {
   return (
-    <section className="pb-24 pt-36 md:pt-44">
+    <section className="pb-14 pt-28 md:pt-32">
       <div className="container grid gap-16 lg:grid-cols-[1fr_1.3fr]">
         <div>
           <FadeIn>
@@ -34,7 +34,7 @@ export default function ContactPage({
               Achat, personnalisation, partenariat, presse ou investissement :
               chaque demande arrive directement dans notre atelier montréalais.
             </p>
-            <div className="mt-10 space-y-6">
+            <div className="mt-8 space-y-6">
               <div className="flex items-start gap-4">
                 <Mail className="mt-0.5 h-5 w-5 text-accent-blue" />
                 <div>

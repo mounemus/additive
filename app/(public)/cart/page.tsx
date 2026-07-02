@@ -9,7 +9,7 @@ export const metadata = buildMetadata({ title: "Panier", path: "/cart" });
  */
 export default function CartPage() {
   return (
-    <section className="pb-24 pt-36 md:pt-44">
+    <section className="pb-14 pt-28 md:pt-32">
       <CartClient />
     </section>
   );

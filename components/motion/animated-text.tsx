@@ -26,8 +26,8 @@ export function AnimatedText({ text, className, as: Tag = "h2", delay = 0 }: Ani
             initial={{ y: "110%" }}
             animate={{ y: 0 }}
             transition={{
-              duration: 0.65,
-              delay: delay + i * 0.045,
+              duration: 0.5,
+              delay: delay + i * 0.035,
               ease: [0.22, 1, 0.36, 1],
             }}
           >

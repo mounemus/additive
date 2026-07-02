@@ -6,7 +6,7 @@ export function Logo({ className }: { className?: string }) {
     <Link
       href="/"
       className={cn(
-        "font-display text-xl font-bold uppercase tracking-[0.35em]",
+        "focus-ring rounded-sm font-display text-xl font-bold uppercase tracking-[0.35em]",
         className
       )}
       aria-label="ADDITIVE — Accueil"

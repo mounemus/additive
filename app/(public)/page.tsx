@@ -63,7 +63,7 @@ export default async function HomePage() {
       <ManifestoBand />
 
       {/* 4. Découverte produit : collections + silhouettes vedettes (un même bloc) */}
-      <section className="py-20 md:py-28">
+      <section className="py-14 md:py-20">
         <div className="container">
           <div className="mb-12 flex items-end justify-between gap-6">
             <div>

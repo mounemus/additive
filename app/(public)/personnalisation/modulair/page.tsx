@@ -23,7 +23,7 @@ const PILLARS = [
 export default function ModulairPage() {
   return (
     <>
-      <section className="pb-10 pt-36 md:pt-44">
+      <section className="pb-8 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">MODUL’AIR — système modulaire</p>

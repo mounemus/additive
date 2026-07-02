@@ -20,7 +20,7 @@ export function CTASection({
   withExploded3D?: boolean;
 }) {
   return (
-    <section className="section-dark relative overflow-hidden py-28 md:py-40">
+    <section className="section-dark relative overflow-hidden py-16 md:py-24">
       {withExploded3D ? (
         <ExplodedBackdrop modelUrl={modelUrl} imageSrc="/images/bg/cta-neutral.png" />
       ) : (
@@ -40,7 +40,7 @@ export function CTASection({
           className="mx-auto max-w-4xl text-balance font-display text-display-lg font-bold"
         />
         <FadeIn delay={0.3}>
-          <MagneticButton className="mt-12">
+          <MagneticButton className="mt-8">
             <Link href={href}>
               <Button variant="light" size="lg" className="gap-2">
                 {button}

@@ -30,7 +30,7 @@ export function LookbookGallery() {
             key={shot.src}
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.6, delay: (i % 3) * 0.08, ease: [0.22, 1, 0.36, 1] }}
             onClick={() => setOpen(shot.src)}
             className={cn("group relative overflow-hidden rounded-3xl bg-[#0a0a0a]", shot.span, shot.ratio)}

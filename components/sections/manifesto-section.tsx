@@ -8,7 +8,7 @@ import { RevealImage } from "@/components/motion/reveal-image";
 /** Section éditoriale type magazine — expérience de marque. */
 export function ManifestoSection() {
   return (
-    <section className="overflow-hidden py-24 md:py-32">
+    <section className="overflow-hidden py-14 md:py-20">
       <div className="container">
         <div className="grid items-center gap-14 lg:grid-cols-2">
           <div>

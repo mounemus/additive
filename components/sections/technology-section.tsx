@@ -19,7 +19,7 @@ export function TechnologySection({
 }) {
   const blocks = compact ? content.blocks.slice(0, 6) : content.blocks;
   return (
-    <section className="section-dark relative overflow-hidden py-24 md:py-32">
+    <section className="section-dark relative overflow-hidden py-14 md:py-20">
       {/* Arrière-plan « fade neutre » généré (Nano Banana) */}
       <div
         aria-hidden

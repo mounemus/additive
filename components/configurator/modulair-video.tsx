@@ -32,7 +32,7 @@ export function ModulairVideo({
 /** Section complète pour la page collection MODUL'AIR. */
 export function ModulairVideoSection() {
   return (
-    <section className="py-20 md:py-28">
+    <section className="py-14 md:py-20">
       <div className="container grid items-center gap-12 lg:grid-cols-2">
         <div>
           <FadeIn>

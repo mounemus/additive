@@ -36,7 +36,7 @@ export default async function FaqPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <section className="pb-12 pt-36 md:pt-44">
+      <section className="pb-10 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">FAQ</p>

@@ -64,7 +64,7 @@ export default async function CollectionPage({
 
   return (
     <>
-      <section className="pb-16 pt-36 md:pt-44">
+      <section className="pb-12 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">Collection</p>

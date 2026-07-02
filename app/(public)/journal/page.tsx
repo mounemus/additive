@@ -25,7 +25,7 @@ const READS = [
 export default function JournalPage() {
   return (
     <>
-      <section className="pb-12 pt-36 md:pt-44">
+      <section className="pb-10 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">Journal</p>
@@ -63,7 +63,7 @@ export default function JournalPage() {
         </div>
       </section>
 
-      <section className="section-dark py-20 md:py-28">
+      <section className="section-dark py-14 md:py-20">
         <div className="container max-w-2xl text-center">
           <h2 className="font-display text-display-md font-bold">Recevez le prochain chapitre.</h2>
           <p className="mt-4 text-muted">Nouvelles collections, modules et coulisses d’atelier — directement par email.</p>

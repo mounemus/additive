@@ -12,7 +12,7 @@ const POINTS = [
 /** Section matière — nylon PA12 / fabrication additive (faits vérifiables). */
 export function MatterBand() {
   return (
-    <section className="overflow-hidden py-20 md:py-28">
+    <section className="overflow-hidden py-14 md:py-20">
       <div className="container">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <RevealImage
@@ -29,7 +29,7 @@ export function MatterBand() {
               text="Légère par nature. Précise par fabrication."
               className="font-display text-display-md font-bold"
             />
-            <div className="mt-10 space-y-6">
+            <div className="mt-8 space-y-6">
               {POINTS.map((p) => (
                 <FadeIn key={p.title}>
                   <div className="flex gap-4">

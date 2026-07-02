@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, ArrowUpRight, Search, User, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/layout/logo";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -45,10 +46,12 @@ export function Navbar() {
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-500 will-change-transform",
+        "fixed inset-x-0 top-0 z-50 transition-all duration-300 will-change-transform",
+        // Fond token-based dans les deux états : garantit le contraste du
+        // texte/logo sur les heros sombres comme sur les sections claires.
         scrolled
           ? "border-b border-border bg-background/85 backdrop-blur-xl"
-          : "bg-transparent",
+          : "bg-background/55 backdrop-blur-md",
         hidden && !open ? "-translate-y-full" : "translate-y-0"
       )}
     >
@@ -56,44 +59,51 @@ export function Navbar() {
         <Logo />
 
         <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigation principale">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "text-sm transition-colors hover:text-foreground",
-                pathname?.startsWith(link.href)
-                  ? "font-medium text-foreground"
-                  : "text-muted"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const active = pathname?.startsWith(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "focus-ring relative rounded-sm py-1 text-sm transition-colors hover:text-foreground",
+                  // État actif : couleur + soulignement (nav-state-active).
+                  "after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-accent-blue after:transition-transform after:duration-200",
+                  active
+                    ? "font-medium text-foreground after:scale-x-100"
+                    : "text-muted"
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden items-center gap-1 lg:flex">
           <Link
             href="/produits"
             aria-label="Rechercher des modèles"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <Search className="h-[18px] w-[18px]" />
           </Link>
           <Link
             href="/account"
             aria-label="Compte"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <User className="h-[18px] w-[18px]" />
           </Link>
           <Link
             href="/cart"
             aria-label="Panier"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <ShoppingBag className="h-[18px] w-[18px]" />
           </Link>
+          <ThemeToggle />
           <Link href="/personnalisation" className="ml-2">
             <Button size="sm" className="gap-1.5">
               Créer ma monture
@@ -102,14 +112,17 @@ export function Navbar() {
           </Link>
         </div>
 
-        <button
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border lg:hidden"
-          onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-          aria-expanded={open}
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-1 lg:hidden">
+          <ThemeToggle />
+          <button
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full border border-border"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={open}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -132,7 +145,13 @@ export function Navbar() {
                 >
                   <Link
                     href={link.href}
-                    className="block py-2.5 font-display text-2xl font-medium"
+                    aria-current={pathname?.startsWith(link.href) ? "page" : undefined}
+                    className={cn(
+                      "focus-ring block rounded-sm py-2.5 font-display text-2xl font-medium",
+                      pathname?.startsWith(link.href)
+                        ? "text-accent-blue"
+                        : "text-foreground"
+                    )}
                   >
                     {link.label}
                   </Link>

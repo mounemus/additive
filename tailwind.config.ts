@@ -15,16 +15,29 @@ const config: Config = {
     },
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        muted: "var(--muted)",
-        surface: "var(--surface)",
-        "surface-dark": "var(--surface-dark)",
-        primary: "var(--primary)",
-        "accent-blue": "var(--accent-blue)",
-        "accent-orange": "var(--accent-orange)",
-        "accent-silver": "var(--accent-silver)",
-        border: "var(--border)",
+        // color-mix + <alpha-value> : rend les modificateurs d'opacité
+        // (bg-background/85, text-foreground/80…) fonctionnels avec des
+        // tokens hex pilotés par l'admin (SiteThemeStyle).
+        background:
+          "color-mix(in srgb, var(--background) calc(<alpha-value> * 100%), transparent)",
+        foreground:
+          "color-mix(in srgb, var(--foreground) calc(<alpha-value> * 100%), transparent)",
+        muted:
+          "color-mix(in srgb, var(--muted) calc(<alpha-value> * 100%), transparent)",
+        surface:
+          "color-mix(in srgb, var(--surface) calc(<alpha-value> * 100%), transparent)",
+        "surface-dark":
+          "color-mix(in srgb, var(--surface-dark) calc(<alpha-value> * 100%), transparent)",
+        primary:
+          "color-mix(in srgb, var(--primary) calc(<alpha-value> * 100%), transparent)",
+        "accent-blue":
+          "color-mix(in srgb, var(--accent-blue) calc(<alpha-value> * 100%), transparent)",
+        "accent-orange":
+          "color-mix(in srgb, var(--accent-orange) calc(<alpha-value> * 100%), transparent)",
+        "accent-silver":
+          "color-mix(in srgb, var(--accent-silver) calc(<alpha-value> * 100%), transparent)",
+        border:
+          "color-mix(in srgb, var(--border) calc(<alpha-value> * 100%), transparent)",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

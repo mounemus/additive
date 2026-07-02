@@ -19,7 +19,7 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
         <div className="relative aspect-[4/3] overflow-hidden bg-[#0a0a0a]">
           <motion.div
             variants={{ hover: { scale: 1.06 } }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="relative h-full w-full"
           >
             <Image

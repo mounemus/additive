@@ -23,7 +23,7 @@ export default async function ManifestoPage() {
 
   return (
     <>
-      <section className="section-dark pb-20 pt-36 md:pt-48">
+      <section className="section-dark pb-14 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-6">Manifeste</p>
@@ -36,7 +36,7 @@ export default async function ManifestoPage() {
         </div>
       </section>
 
-      <section className="py-20 md:py-28">
+      <section className="py-14 md:py-20">
         <div className="container max-w-3xl">
           <div className="space-y-16">
             {manifesto.sections.map((section, i) => (

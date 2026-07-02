@@ -74,7 +74,7 @@ export default async function MerciPage({
   }
 
   return (
-    <section className="pb-24 pt-36 md:pt-44">
+    <section className="pb-14 pt-28 md:pt-32">
       <div className="container max-w-xl text-center">
         {state === "paid" ? (
           <>
@@ -105,7 +105,7 @@ export default async function MerciPage({
             <p className="mt-4 text-muted">Votre demande est bien enregistrée.</p>
           </>
         )}
-        <div className="mt-10 flex justify-center gap-3">
+        <div className="mt-8 flex justify-center gap-3">
           <Link href="/" className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background">
             Retour à l&rsquo;accueil
           </Link>

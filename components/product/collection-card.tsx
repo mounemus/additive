@@ -15,10 +15,10 @@ export function CollectionCard({
 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 32 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
       whileHover="hover"
       className="group relative overflow-hidden rounded-3xl bg-[#0a0a0a]"
     >
@@ -31,7 +31,7 @@ export function CollectionCard({
           {collection.image && (
             <motion.div
               variants={{ hover: { scale: 1.07 } }}
-              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="relative h-full w-full"
             >
               <Image

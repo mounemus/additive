@@ -23,7 +23,7 @@ export function ProcessSequence({ videoSrc = "/videos/print-layers.mp4" }: { vid
   const showVideo = !reduce && videoOk && !!videoSrc && !videoSrc.includes("print-layers");
 
   return (
-    <section className="section-dark relative overflow-hidden py-20 md:py-28">
+    <section className="section-dark relative overflow-hidden py-14 md:py-20">
       {/* Fond : texture matière générée (Nano Banana) + lattice abstrait */}
       <div
         aria-hidden
@@ -65,13 +65,13 @@ export function ProcessSequence({ videoSrc = "/videos/print-layers.mp4" }: { vid
           </FadeIn>
         </div>
 
-        <div className="mt-10 grid gap-px overflow-hidden rounded-3xl border border-border bg-border md:grid-cols-5">
+        <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-border bg-border md:grid-cols-5">
           {STEPS.map((step, i) => (
             <motion.div
               key={step.id}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
+              viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="group relative bg-surface/90 p-7 backdrop-blur-sm"
             >

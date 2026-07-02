@@ -20,7 +20,7 @@ export const CUSTOMIZATION_STEPS = [
 export function CustomizationSteps({ compact = false }: { compact?: boolean }) {
   const steps = compact ? CUSTOMIZATION_STEPS.slice(0, 6) : CUSTOMIZATION_STEPS;
   return (
-    <section className="py-20 md:py-28">
+    <section className="py-14 md:py-20">
       <div className="container">
         <div className="grid items-start gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div className="lg:sticky lg:top-28">
@@ -48,7 +48,7 @@ export function CustomizationSteps({ compact = false }: { compact?: boolean }) {
               <RevealImage
                 src="/images/editorial/exploded-modulair.png"
                 alt="Vue éclatée des composants modulaires — ADDITIVE"
-                className="mt-10 hidden aspect-[4/3] rounded-3xl lg:block"
+                className="mt-8 hidden aspect-[4/3] rounded-3xl lg:block"
                 sizes="40vw"
               />
             </FadeIn>

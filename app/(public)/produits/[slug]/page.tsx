@@ -11,7 +11,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { CTASection } from "@/components/sections/cta-section";
 import { getProduct, getRelatedProducts } from "@/lib/catalog";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, productJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 
 // ISR : contenu servi en cache et régénéré au plus toutes les 5 min
@@ -68,7 +68,14 @@ export default async function ProductPage({
 
   return (
     <>
-      <section className="pb-20 pt-32 md:pt-40">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productJsonLd(product)),
+        }}
+      />
+      <section className="pb-14 pt-28 md:pt-32">
         <div className="container grid gap-12 lg:grid-cols-[1.15fr_1fr]">
           <FadeIn y={16}>
             <ProductGallery images={product.images} name={product.name} />
@@ -80,7 +87,7 @@ export default async function ProductPage({
       </section>
 
       {product.model3dUrl && (
-        <section className="border-t border-border py-16">
+        <section className="border-t border-border py-12">
           <div className="container">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-display text-display-md font-bold">Vue 3D</h2>
@@ -97,7 +104,7 @@ export default async function ProductPage({
       )}
 
       {product.description && (
-        <section className="border-t border-border py-20">
+        <section className="border-t border-border py-14">
           <div className="container grid gap-10 lg:grid-cols-[1fr_1.5fr]">
             <h2 className="font-display text-display-md font-bold">
               L’histoire du design
@@ -112,7 +119,7 @@ export default async function ProductPage({
       )}
 
       {product.collection?.slug === "modulair" && (
-        <section className="border-t border-border py-16 md:py-20">
+        <section className="border-t border-border py-12 md:py-16">
           <div className="container grid items-center gap-10 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <p className="eyebrow mb-3">Système modulaire</p>
@@ -135,13 +142,13 @@ export default async function ProductPage({
         </section>
       )}
 
-      <section className="section-dark py-20 md:py-28">
+      <section className="section-dark py-14 md:py-20">
         <div className="container">
           <AnimatedText
             text="Pourquoi cette monture ?"
             className="font-display text-display-md font-bold"
           />
-          <div className="mt-12 grid gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {WHY_POINTS.map((point) => (
               <div key={point.title} className="bg-surface p-7">
                 <point.icon className="h-6 w-6 text-accent-blue" />
@@ -156,9 +163,9 @@ export default async function ProductPage({
       </section>
 
       {related.length > 0 && (
-        <section className="py-20 md:py-28">
+        <section className="py-14 md:py-20">
           <div className="container">
-            <h2 className="mb-10 font-display text-display-md font-bold">
+            <h2 className="mb-8 font-display text-display-md font-bold">
               Vous aimerez aussi
             </h2>
             <ProductGrid products={related} />

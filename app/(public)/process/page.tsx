@@ -24,7 +24,7 @@ const STEPS = [
 export default function ProcessPage() {
   return (
     <>
-      <section className="pb-10 pt-36 md:pt-44">
+      <section className="pb-8 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">Le procédé</p>
@@ -44,7 +44,7 @@ export default function ProcessPage() {
 
       <ProcessSequence />
 
-      <section className="py-16 md:py-24">
+      <section className="py-12 md:py-16">
         <div className="container grid gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div className="lg:sticky lg:top-28 lg:self-start">
             <h2 className="font-display text-display-md font-bold">Cinq étapes, une exigence.</h2>

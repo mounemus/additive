@@ -18,7 +18,7 @@ export const metadata = buildMetadata({
 export default function LookbookPage() {
   return (
     <>
-      <section className="pb-12 pt-36 md:pt-44">
+      <section className="pb-10 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">Lookbook</p>
@@ -40,7 +40,7 @@ export default function LookbookPage() {
         <div className="container">
           <LookbookGallery />
           <FadeIn delay={0.2}>
-            <div className="mt-12 flex justify-center">
+            <div className="mt-8 flex justify-center">
               <Link href="/personnalisation">
                 <Button size="lg">Créer ma monture</Button>
               </Link>

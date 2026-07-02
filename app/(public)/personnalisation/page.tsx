@@ -23,7 +23,7 @@ export default async function CustomizationPage({
 
   return (
     <>
-      <section className="pb-12 pt-36 md:pt-44">
+      <section className="pb-10 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
             <p className="eyebrow mb-4">Personnalisation</p>

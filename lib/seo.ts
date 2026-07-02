@@ -19,6 +19,59 @@ export const SITE_URL = sanitizeUrl(process.env.NEXT_PUBLIC_SITE_URL);
 const DEFAULT_DESCRIPTION =
   "ADDITIVE — Lunetterie modulaire imprimée en 3D à Montréal. Des lunettes générées pour votre visage, imprimées pour votre style. Design paramétrique, nylon PA12, personnalisation morphologique.";
 
+/** JSON-LD Organization pour le layout public (schema.org). */
+export function organizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: "https://additive-blue.vercel.app",
+    logo: `${SITE_URL}/logo.svg`,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Montréal",
+      addressRegion: "QC",
+      addressCountry: "CA",
+    },
+  };
+}
+
+/** JSON-LD Product pour les fiches produit (offers seulement si prix connu). */
+export function productJsonLd(product: {
+  name: string;
+  slug: string;
+  description?: string | null;
+  shortDescription?: string | null;
+  image: string;
+  price: number | null;
+  currency: string;
+}) {
+  const image = product.image.startsWith("http")
+    ? product.image
+    : `${SITE_URL}${product.image}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description:
+      product.shortDescription ?? product.description ?? DEFAULT_DESCRIPTION,
+    image,
+    url: `${SITE_URL}/produits/${product.slug}`,
+    brand: { "@type": "Brand", name: SITE_NAME },
+    ...(product.price != null
+      ? {
+          offers: {
+            "@type": "Offer",
+            price: product.price,
+            priceCurrency: product.currency || "CAD",
+            availability: "https://schema.org/InStock",
+            url: `${SITE_URL}/produits/${product.slug}`,
+          },
+        }
+      : {}),
+  };
+}
+
 export function buildMetadata({
   title,
   description,

@@ -17,7 +17,7 @@ const LINES = [
 export function ManifestoBand() {
   const reduce = useReducedMotion();
   return (
-    <section className="overflow-hidden py-20 md:py-28">
+    <section className="overflow-hidden py-14 md:py-20">
       <div className="container grid items-center gap-12 lg:grid-cols-[1.25fr_1fr]">
         <div>
           <h2 className="font-display text-display-lg font-bold leading-[0.95]">
@@ -27,8 +27,8 @@ export function ManifestoBand() {
                   className="block"
                   initial={reduce ? false : { y: "110%" }}
                   whileInView={{ y: 0 }}
-                  viewport={{ once: true, margin: "-80px" }}
-                  transition={{ duration: 0.8, delay: li * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.55, delay: li * 0.08, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {line.map((w, wi) => (
                     <span key={wi} className={w.accent ? "text-accent-blue" : undefined}>
