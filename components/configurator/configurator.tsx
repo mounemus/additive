@@ -58,6 +58,7 @@ import {
   type StyleTag,
 } from "@/lib/configurator";
 import { MEASUREMENT_LABELS, type FaceMeasurements } from "@/lib/face/face-analysis";
+import { saveCartItem, clearCartItem } from "@/lib/cart";
 
 type PublicConfig = {
   consent: { title: string; body: string; checkbox: string; privacyNote: string };
@@ -146,6 +147,31 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const moodboardDone = useRef(false);
   const conceptsDone = useRef(false);
+
+  // ── Reprise de parcours : le diagnostic de style survit au refresh ────────
+  // (réponses + audace uniquement — jamais de photo dans le stockage local).
+  const PROGRESS_KEY = "additive.progress.v1";
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PROGRESS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { answers?: Record<string, string>; boldness?: Boldness };
+        if (p.answers && Object.keys(p.answers).length) setAnswers(p.answers);
+        if (p.boldness) setBoldness(p.boldness);
+      }
+    } catch {
+      /* stockage indisponible : parcours normal */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      if (Object.keys(answers).length) {
+        window.localStorage.setItem(PROGRESS_KEY, JSON.stringify({ answers, boldness }));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [answers, boldness]);
 
   const stepIndex = STEP_ORDER.indexOf(step);
   const profile = useMemo(() => answersToProfile(answers), [answers]);
@@ -247,13 +273,31 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
       body: JSON.stringify({ conceptLabel: selected.label, boldness, ...opts }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => !cancelled && setQuote(data))
+      .then((data) => {
+        if (cancelled) return;
+        setQuote(data);
+        // Panier : la configuration validée survit à la fermeture de la page
+        // et se finalise dans /cart (jamais de photo dans le stockage local).
+        saveCartItem({
+          conceptLabel: selected.label,
+          conceptSummary: selected.summary,
+          image: selected.image,
+          styleTags: profile,
+          boldness,
+          faceShape: scan?.faceShape,
+          measurements: scan?.measurements ?? undefined,
+          options: { ...opts },
+          quoteTotal: data.total,
+          currency: data.currency,
+          matchRate: selected.matchRate,
+        });
+      })
       .catch(() => !cancelled && setQuote(null))
       .finally(() => !cancelled && setQuoteLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [step, selected, boldness, opts]);
+  }, [step, selected, boldness, opts, profile, scan]);
 
   // ── Façade pour l'essayage AR — PRÉ-générée dès le choix du concept ───────
   // (lancée tôt pour qu'elle soit prête quand l'utilisateur atteint l'essayage)
@@ -356,6 +400,13 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
         }),
       });
       if (!res.ok) throw new Error();
+      // Demande transmise : le panier et la progression locale sont soldés.
+      clearCartItem();
+      try {
+        window.localStorage.removeItem(PROGRESS_KEY);
+      } catch {
+        /* ignore */
+      }
       setSubmitState("done");
     } catch {
       setSubmitState("error");

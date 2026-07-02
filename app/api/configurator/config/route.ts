@@ -22,6 +22,9 @@ export async function GET() {
   return NextResponse.json({
     consent,
     aiActive,
+    // Paiement d'acompte : actif dès que la clé Stripe est posée côté serveur.
+    paymentsActive: Boolean(process.env.STRIPE_SECRET_KEY),
+    depositRate: Number(process.env.STRIPE_DEPOSIT_RATE ?? 0.3),
     currency: pricing.currency,
     options: {
       materials: pricing.materials.map(({ id, label, note }) => ({ id, label, note })),

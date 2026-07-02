@@ -4,6 +4,7 @@ import { customizationRequestSchema, quoteOptionsSchema } from "@/lib/validation
 import { computeQuote } from "@/lib/configurator";
 import { getPricingConfig } from "@/lib/configurator-settings";
 import { guard, RULES } from "@/lib/rate-limit";
+import { sendEmail, notifyAtelier, customizationClientEmail, atelierNotificationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   const limited = await guard(req, "form", RULES.form);
@@ -59,6 +60,24 @@ export async function POST(req: Request) {
         message: parsed.data.message || null,
       },
     });
+    // Confirmation client + notification atelier (fire-and-forget, fail-open).
+    const clientMail = customizationClientEmail({
+      name: parsed.data.name,
+      conceptLabel: parsed.data.conceptLabel,
+      total: estimatedPrice,
+    });
+    void sendEmail({ to: parsed.data.email, ...clientMail, replyTo: process.env.ADMIN_EMAIL });
+    const atelierMail = atelierNotificationEmail({
+      kind: "personnalisation",
+      name: parsed.data.name,
+      email: parsed.data.email,
+      conceptLabel: parsed.data.conceptLabel,
+      total: estimatedPrice,
+      message: parsed.data.message || null,
+      requestId: created.id,
+    });
+    notifyAtelier(atelierMail.subject, atelierMail.html);
+
     return NextResponse.json({ ok: true, id: created.id, estimatedPrice }, { status: 201 });
   } catch (e) {
     console.error("[customization] persistence error:", e);

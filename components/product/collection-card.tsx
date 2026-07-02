@@ -47,6 +47,7 @@ export function CollectionCard({
           <div className="absolute inset-x-0 bottom-0 p-7">
             <p className="eyebrow mb-2 !text-white/60">
               {collection.productCount} modèle{collection.productCount > 1 ? "s" : ""}
+              {collection.minPrice != null && ` · à partir de ${collection.minPrice} $`}
             </p>
             <h3 className="font-display text-3xl font-bold text-white">
               {collection.name}

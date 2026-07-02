@@ -44,9 +44,16 @@ export type CatalogCollection = {
   image: string | null;
   video: string | null;
   productCount: number;
+  /** Prix du modèle le moins cher de la collection (affichage « À partir de »). */
+  minPrice: number | null;
   seoTitle: string | null;
   seoDescription: string | null;
 };
+
+function minPriceOf(prices: (number | null)[]): number | null {
+  const nums = prices.filter((p): p is number => typeof p === "number" && p > 0);
+  return nums.length ? Math.min(...nums) : null;
+}
 
 function staticCollectionToCatalog(c: StaticCollection): CatalogCollection {
   return {
@@ -58,6 +65,7 @@ function staticCollectionToCatalog(c: StaticCollection): CatalogCollection {
     image: c.image,
     video: null,
     productCount: PRODUCTS.filter((p) => p.collectionSlug === c.slug).length,
+    minPrice: minPriceOf(PRODUCTS.filter((p) => p.collectionSlug === c.slug).map((p) => p.price)),
     seoTitle: c.seoTitle,
     seoDescription: c.seoDescription,
   };
@@ -138,7 +146,10 @@ export async function getCollections(): Promise<CatalogCollection[]> {
     const rows = await db.collection.findMany({
       where: { isPublished: true },
       orderBy: { order: "asc" },
-      include: { _count: { select: { products: { where: { isPublished: true } } } } },
+      include: {
+        _count: { select: { products: { where: { isPublished: true } } } },
+        products: { where: { isPublished: true }, select: { price: true } },
+      },
     });
     if (rows.length === 0) return COLLECTIONS.map(staticCollectionToCatalog);
     return rows.map((c) => ({
@@ -150,6 +161,7 @@ export async function getCollections(): Promise<CatalogCollection[]> {
       image: c.image,
       video: c.video,
       productCount: c._count.products,
+      minPrice: minPriceOf(c.products.map((p) => p.price)),
       seoTitle: c.seoTitle,
       seoDescription: c.seoDescription,
     }));

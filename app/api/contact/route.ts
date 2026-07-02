@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { contactSchema } from "@/lib/validations";
 import { guard, RULES } from "@/lib/rate-limit";
+import { sendEmail, notifyAtelier, contactClientEmail, atelierNotificationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   const limited = await guard(req, "form", RULES.form);
@@ -32,6 +33,21 @@ export async function POST(req: Request) {
         message: parsed.data.message,
       },
     });
+    // Accusé de réception + notification atelier (fire-and-forget).
+    void sendEmail({
+      to: parsed.data.email,
+      ...contactClientEmail(parsed.data.name),
+      replyTo: process.env.ADMIN_EMAIL,
+    });
+    const notif = atelierNotificationEmail({
+      kind: "contact",
+      name: parsed.data.name,
+      email: parsed.data.email,
+      message: parsed.data.message,
+      requestId: created.id,
+    });
+    notifyAtelier(notif.subject, notif.html);
+
     return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
   } catch (e) {
     // Détails techniques côté serveur uniquement — message générique au client.
