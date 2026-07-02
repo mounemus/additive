@@ -13,6 +13,7 @@ function LoginForm() {
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +24,7 @@ function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
+      totp,
       redirect: false,
     });
     setLoading(false);
@@ -70,6 +72,18 @@ function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="totp">Code 2FA (si activé)</Label>
+          <Input
+            id="totp"
+            type="text"
+            inputMode="numeric"
+            placeholder="123456"
+            value={totp}
+            onChange={(e) => setTotp(e.target.value)}
+            autoComplete="one-time-code"
           />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { revalidateCatalog } from "@/lib/admin";
 import { productSchema } from "@/lib/validations";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(
   req: Request,
@@ -22,7 +23,8 @@ export async function PATCH(
     try {
       await db.product.update({ where: { id: params.id }, data: body });
       revalidateCatalog();
-    return NextResponse.json({ ok: true });
+      logAudit("update", "Product", params.id, JSON.stringify(body));
+      return NextResponse.json({ ok: true });
     } catch {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
@@ -60,6 +62,7 @@ export async function PATCH(
       },
     });
     revalidateCatalog();
+    logAudit("update", "Product", params.id, data.name);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[admin/products] update error:", e);
@@ -76,6 +79,7 @@ export async function DELETE(
   try {
     await db.product.delete({ where: { id: params.id } });
     revalidateCatalog();
+    logAudit("delete", "Product", params.id);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { open } from "@/lib/secret-box";
+import { verifyTotp } from "@/lib/totp";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -14,6 +16,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Mot de passe", type: "password" },
+        totp: { label: "Code 2FA", type: "text" },
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -29,6 +32,15 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null;
         const valid = await bcrypt.compare(credentials.password, user.password);
         if (!valid) return null;
+
+        // 2FA TOTP : si activé, le code à 6 chiffres est obligatoire.
+        if (user.totpEnabled) {
+          if (!user.totpSecret) return null;
+          const secret = open(user.totpSecret);
+          if (!secret) return null;
+          if (!verifyTotp(secret, credentials.totp ?? "")) return null;
+        }
+
         return { id: user.id, email: user.email, name: user.name ?? "Admin" };
       },
     }),

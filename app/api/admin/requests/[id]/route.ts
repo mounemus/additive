@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { requestStatusSchema } from "@/lib/validations";
+import { logAudit } from "@/lib/audit";
 
 /**
  * Mise à jour du statut / de la note interne d'une demande.
@@ -27,6 +28,12 @@ export async function PATCH(
     } else {
       await db.contactRequest.update({ where: { id: params.id }, data });
     }
+    logAudit(
+      "update",
+      kind === "customization" ? "CustomizationRequest" : "ContactRequest",
+      params.id,
+      `statut: ${data.status}`
+    );
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "not_found" }, { status: 404 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { providersAdminSchema } from "@/lib/validations";
 import { saveProvidersConfig, getProvidersStatus } from "@/lib/configurator-settings";
+import { logAudit } from "@/lib/audit";
 
 export async function PUT(req: Request) {
   if (!(await requireAdmin()))
@@ -12,6 +13,8 @@ export async function PUT(req: Request) {
 
   try {
     await saveProvidersConfig(parsed.data);
+    // Détail SANS les clés : uniquement les champs touchés.
+    logAudit("update", "ProvidersConfig", undefined, Object.keys(parsed.data).join(", "));
     // Renvoie le statut SÛR (sans clés en clair) pour rafraîchir l'UI.
     return NextResponse.json({ ok: true, status: await getProvidersStatus() });
   } catch (e) {

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { revalidateCatalog } from "@/lib/admin";
 import { productSchema } from "@/lib/validations";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(req: Request) {
   if (!(await requireAdmin()))
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
       },
     });
     revalidateCatalog();
+    logAudit("create", "Product", created.id, created.name);
     return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
   } catch (e) {
     console.error("[admin/products] create error:", e);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 const contentSchema = z.object({
   key: z.string().min(1).max(80),
@@ -22,6 +23,7 @@ export async function PUT(req: Request) {
       update: { value: parsed.data.value as object },
       create: { key: parsed.data.key, value: parsed.data.value as object },
     });
+    logAudit("update", "SiteContent", parsed.data.key);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[admin/content] upsert error:", e);

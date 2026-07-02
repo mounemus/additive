@@ -139,12 +139,29 @@ model SiteContent {
 }
 
 model AdminUser {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  password    String
+  role        String   @default("admin")
+  // 2FA TOTP (RFC 6238). Secret scellé via lib/secret-box (AES-256-GCM).
+  totpSecret  String?
+  totpEnabled Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// Journal d'audit des actions admin (mutations back-office).
+// Fire-and-forget : ne bloque jamais la mutation d'origine.
+model AuditLog {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      String   @default("admin")
+  userEmail String
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Fenêtres de rate-limit (clé = scope:identifiant:fenêtre). Nettoyage

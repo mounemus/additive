@@ -13,6 +13,7 @@ import {
   Wand2,
   Palette,
   Activity,
+  ScrollText,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ const NAV = [
   { href: "/admin/configurator", label: "Configurateur", icon: Wand2 },
   { href: "/admin/ai-costs", label: "Coûts IA", icon: Activity },
   { href: "/admin/contact-requests", label: "Demandes", icon: Inbox },
+  { href: "/admin/audit", label: "Journal", icon: ScrollText },
   { href: "/admin/settings", label: "Paramètres", icon: Settings },
 ];
 

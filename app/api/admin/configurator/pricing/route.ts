@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { pricingAdminSchema } from "@/lib/validations";
 import { savePricingConfig } from "@/lib/configurator-settings";
+import { logAudit } from "@/lib/audit";
 
 export async function PUT(req: Request) {
   if (!(await requireAdmin()))
@@ -16,6 +17,7 @@ export async function PUT(req: Request) {
 
   try {
     await savePricingConfig(parsed.data);
+    logAudit("update", "PricingConfig");
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[admin/pricing] save error:", e);
