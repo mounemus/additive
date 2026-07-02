@@ -12,6 +12,7 @@ import {
   Settings,
   Wand2,
   Palette,
+  Activity,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/admin/appearance", label: "Apparence", icon: Palette },
   { href: "/admin/content", label: "Contenus", icon: FileText },
   { href: "/admin/configurator", label: "Configurateur", icon: Wand2 },
+  { href: "/admin/ai-costs", label: "Coûts IA", icon: Activity },
   { href: "/admin/contact-requests", label: "Demandes", icon: Inbox },
   { href: "/admin/settings", label: "Paramètres", icon: Settings },
 ];

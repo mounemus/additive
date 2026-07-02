@@ -6,7 +6,9 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { getCollections, getProducts } from "@/lib/catalog";
 import { buildMetadata } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+// ISR : contenu servi en cache et régénéré au plus toutes les 5 min
+// (les mutations admin déclenchent une revalidation immédiate).
+export const revalidate = 300;
 
 export const metadata = buildMetadata({
   title: "Tous les modèles",

@@ -12,7 +12,9 @@ import { getCollection, getProducts } from "@/lib/catalog";
 import { buildMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+// ISR : contenu servi en cache et régénéré au plus toutes les 5 min
+// (les mutations admin déclenchent une revalidation immédiate).
+export const revalidate = 300;
 
 const COLLECTION_PILLARS: Record<string, string[]> = {
   modulair: [

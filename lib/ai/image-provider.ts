@@ -1,5 +1,6 @@
 import "server-only";
 import { getTaskConfig, getProviderKey } from "@/lib/configurator-settings";
+import { logAiCall } from "@/lib/ai/image-store";
 import type { ImageTask } from "@/content/configurator-defaults";
 
 /**
@@ -49,23 +50,45 @@ export async function generateImage(
   const key = await getProviderKey(provider);
   if (!key) return { ok: false, error: "unavailable", detail: "no key" };
 
+  // Les références peuvent être des URLs (images persistées sur le CDN) :
+  // on les inline pour les fournisseurs qui exigent du base64.
+  if (req.referenceImages?.length) {
+    const converted = await Promise.all(req.referenceImages.map((r) => toDataUrl(r)));
+    req = { ...req, referenceImages: converted.filter((x): x is string => Boolean(x)) };
+  }
+
+  const started = Date.now();
+  let result: ImageGenResult;
   try {
     switch (provider) {
       case "openai":
-        return await openai(req, key, model);
+        result = await openai(req, key, model);
+        break;
       case "gemini":
-        return await gemini(req, key, model);
+        result = await gemini(req, key, model);
+        break;
       case "stability":
-        return await stability(req, key, model);
+        result = await stability(req, key, model);
+        break;
       case "replicate":
-        return await replicate(req, key, model);
+        result = await replicate(req, key, model);
+        break;
       default:
-        return { ok: false, error: "unavailable", detail: "unknown provider" };
+        result = { ok: false, error: "unavailable", detail: "unknown provider" };
     }
   } catch (e) {
     console.error("[image-provider] generation failed:", e);
-    return { ok: false, error: "unavailable", detail: "provider error" };
+    result = { ok: false, error: "unavailable", detail: "provider error" };
   }
+  logAiCall({
+    task,
+    provider,
+    model,
+    ok: result.ok,
+    latencyMs: Date.now() - started,
+    detail: result.ok ? undefined : result.detail,
+  });
+  return result;
 }
 
 // ── OpenAI Images (gpt-image-1 / dall-e-3) ──────────────────────────────────
@@ -161,26 +184,30 @@ export async function generateWornPortrait(opts: {
   conceptImage?: string;
 }): Promise<ImageGenResult> {
   const { provider, model } = await getTaskConfig("portrait");
+  // Image du concept en URL (CDN) → inline pour la référence Gemini.
+  if (opts.conceptImage && !opts.conceptImage.startsWith("data:")) {
+    opts = { ...opts, conceptImage: (await toDataUrl(opts.conceptImage)) ?? undefined };
+  }
   // Ordre d'essai : provider choisi en tête, puis l'autre en repli.
   const order = provider === "openai" ? ["openai", "gemini"] : ["gemini", "openai"];
 
   for (const p of order) {
+    const started = Date.now();
     if (p === "gemini") {
       const key = await getProviderKey("gemini");
       if (!key) continue;
       const refs = [opts.photo];
       if (opts.conceptImage && opts.conceptImage.startsWith("data:")) refs.push(opts.conceptImage);
-      const r = await geminiGenerate(
-        opts.prompt,
-        refs,
-        key,
-        provider === "gemini" ? model : "gemini-3-pro-image"
-      );
+      const m = provider === "gemini" ? model : "gemini-3-pro-image";
+      const r = await geminiGenerate(opts.prompt, refs, key, m);
+      logAiCall({ task: "portrait", provider: "gemini", model: m, ok: r.ok, latencyMs: Date.now() - started, detail: r.ok ? undefined : r.detail });
       if (r.ok) return r;
     } else {
       const key = await getProviderKey("openai");
       if (!key) continue;
-      const r = await openaiEdit(opts.prompt, opts.photo, key, provider === "openai" ? model : "gpt-image-1");
+      const m = provider === "openai" ? model : "gpt-image-1";
+      const r = await openaiEdit(opts.prompt, opts.photo, key, m);
+      logAiCall({ task: "portrait", provider: "openai", model: m, ok: r.ok, latencyMs: Date.now() - started, detail: r.ok ? undefined : r.detail });
       if (r.ok) return r;
     }
   }
@@ -264,11 +291,14 @@ export async function generateFrameOverlay(opts: {
       : ["openai", "gemini"];
 
   for (const p of order) {
+    const started = Date.now();
     if (p === "openai") {
       const r = await overlayOpenAI(opts.prompt);
+      logAiCall({ task: "frameOverlay", provider: "openai", model: "gpt-image-1", ok: Boolean(r), latencyMs: Date.now() - started });
       if (r) return r;
     } else {
       const r = await overlayGemini(opts.prompt, opts.conceptImage, model);
+      logAiCall({ task: "frameOverlay", provider: "gemini", model, ok: Boolean(r), latencyMs: Date.now() - started });
       if (r) return r;
     }
   }

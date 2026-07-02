@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { getCollections, getProducts, getContent } from "@/lib/catalog";
 import { getMedia } from "@/lib/site-config";
 
-export const dynamic = "force-dynamic";
+// ISR : contenu servi en cache et régénéré au plus toutes les 5 min
+// (les mutations admin déclenchent une revalidation immédiate).
+export const revalidate = 300;
 
 export default async function HomePage() {
   const [hero, technology, cta, collections, featured, media] =

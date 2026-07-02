@@ -5,7 +5,9 @@ import { CTASection } from "@/components/sections/cta-section";
 import { getCollections } from "@/lib/catalog";
 import { buildMetadata } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+// ISR : contenu servi en cache et régénéré au plus toutes les 5 min
+// (les mutations admin déclenchent une revalidation immédiate).
+export const revalidate = 300;
 
 export const metadata = buildMetadata({
   title: "Collections",

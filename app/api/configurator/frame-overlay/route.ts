@@ -8,6 +8,7 @@ import {
 } from "@/lib/configurator";
 import { generateFrameOverlay } from "@/lib/ai/image-provider";
 import { guard, RULES } from "@/lib/rate-limit";
+import { makeCacheKey, getCachedImage, persistAndCache, logAiCall } from "@/lib/ai/image-store";
 
 // Génération d'image : durée bornée explicitement.
 export const maxDuration = 60;
@@ -56,9 +57,30 @@ export async function POST(req: Request) {
       tags: [] as StyleTag[],
     };
 
+  // Cache : même concept + même image de référence = même façade.
+  // Valeur stockée = `<bg>|<url>` (le type de fond doit survivre au cache).
+  const cacheKey = makeCacheKey("frameOverlay", [
+    parsed.data.conceptLabel,
+    [...styleTags].sort(),
+    parsed.data.conceptImage ?? "",
+  ]);
+  const cached = await getCachedImage(cacheKey);
+  if (cached) {
+    const sep = cached.indexOf("|");
+    if (sep > 0) {
+      logAiCall({ task: "frameOverlay", provider: "cache", ok: true, cached: true, latencyMs: 0 });
+      const bg = cached.slice(0, sep) === "white" ? "white" : "transparent";
+      return NextResponse.json({ image: cached.slice(sep + 1), bg });
+    }
+  }
+
   const prompt = buildFrameOverlayPromptFr(concept, styleTags);
   const result = await generateFrameOverlay({ prompt, conceptImage: parsed.data.conceptImage });
   if (!result.ok) return NextResponse.json({ error: "unavailable" }, { status: 503 });
 
-  return NextResponse.json({ image: result.dataUrl, bg: result.bg });
+  // Persistance CDN (ou data URL en repli), puis mise en cache préfixée du fond.
+  const url = await persistAndCache(null, "frameOverlay", undefined, result.dataUrl);
+  await persistAndCache(cacheKey, "frameOverlay", undefined, `${result.bg}|${url}`);
+
+  return NextResponse.json({ image: url, bg: result.bg });
 }

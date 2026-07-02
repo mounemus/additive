@@ -70,6 +70,10 @@ model ContactRequest {
   status    String   @default("new")
   note      String?
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([status])
 }
 
 // Demande issue du configurateur "Créer mes lunettes".
@@ -99,6 +103,10 @@ model CustomizationRequest {
   status         String   @default("new")
   note           String?
   createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([status])
 }
 
 // Photo temporaire (capture/essayage/portrait) — confidentialité d'abord :
@@ -110,6 +118,8 @@ model TempPhoto {
   kind      String   @default("capture") // capture | snapshot | portrait
   createdAt DateTime @default(now())
   expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 model MediaAsset {
@@ -145,4 +155,35 @@ model RateLimitWindow {
   resetAt DateTime
 
   @@index([resetAt])
+}
+
+// Cache des images générées par IA : même profil + même tâche = même image
+// réutilisée (TTL) au lieu d'une régénération payante. `url` = URL Vercel Blob
+// si le store est configuré, sinon data URL (bornée).
+model GeneratedImage {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  task      String
+  provider  String?
+  url       String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+// Journal des appels aux fournisseurs d'images : pilotage des coûts et du
+// taux d'échec depuis l'admin (aucun contenu client stocké ici).
+model AiCallLog {
+  id        String   @id @default(cuid())
+  task      String
+  provider  String
+  model     String?
+  ok        Boolean
+  cached    Boolean  @default(false)
+  latencyMs Int
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

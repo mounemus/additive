@@ -200,26 +200,31 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   }, [step, profile, scan]);
 
   // ── Concepts (génération + régénération) ──────────────────────────────────
-  const loadConcepts = useCallback(() => {
-    if (!profile.length) return;
-    conceptsDone.current = true;
-    setConceptsLoading(true);
-    setSelected(null);
-    fetch("/api/configurator/concepts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        styleTags: profile,
-        faceShape: scan?.faceShape,
-        boldness,
-        moodboardImage: moodboard?.ai ? moodboard.image : undefined,
-      }),
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setConcepts(data.concepts ?? []))
-      .catch(() => setConcepts([]))
-      .finally(() => setConceptsLoading(false));
-  }, [profile, scan, boldness, moodboard]);
+  // `fresh` = clic explicite sur « Régénérer » : ignore le cache serveur.
+  const loadConcepts = useCallback(
+    (fresh = false) => {
+      if (!profile.length) return;
+      conceptsDone.current = true;
+      setConceptsLoading(true);
+      setSelected(null);
+      fetch("/api/configurator/concepts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          styleTags: profile,
+          faceShape: scan?.faceShape,
+          boldness,
+          moodboardImage: moodboard?.ai ? moodboard.image : undefined,
+          fresh,
+        }),
+      })
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((data) => setConcepts(data.concepts ?? []))
+        .catch(() => setConcepts([]))
+        .finally(() => setConceptsLoading(false));
+    },
+    [profile, scan, boldness, moodboard]
+  );
 
   useEffect(() => {
     if (step === "concepts" && !conceptsDone.current) loadConcepts();
@@ -643,7 +648,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                     jamais être recopiée.
                   </p>
                 </div>
-                <Button variant="outline" size="sm" className="gap-2" onClick={loadConcepts} disabled={conceptsLoading}>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => loadConcepts(true)} disabled={conceptsLoading}>
                   <RefreshCw className={cn("h-4 w-4", conceptsLoading && "animate-spin")} /> Régénérer
                 </Button>
               </div>

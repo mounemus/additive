@@ -10,10 +10,11 @@ import {
   type FaceShape,
   type Boldness,
 } from "@/lib/configurator";
-import { getPricingConfig } from "@/lib/configurator-settings";
+import { getPricingConfig, getTaskConfig } from "@/lib/configurator-settings";
 import { generateImage } from "@/lib/ai/image-provider";
 import { demoConceptSvg } from "@/lib/ai/demo-visuals";
 import { guard, RULES } from "@/lib/rate-limit";
+import { makeCacheKey, getCachedImage, persistAndCache, logAiCall } from "@/lib/ai/image-store";
 
 // 3 générations d'images en parallèle : durée bornée explicitement.
 export const maxDuration = 60;
@@ -47,10 +48,38 @@ export async function POST(req: Request) {
 
   const concepts = buildConcepts(faceShape, styleTags, boldness);
   const pricing = await getPricingConfig();
+  const cfg = await getTaskConfig("concepts");
+  const fresh = Boolean(parsed.data.fresh);
 
   // Génère les visuels en parallèle (chaque concept conditionné sur le moodboard).
   const enriched = await Promise.all(
     concepts.map(async (concept, i) => {
+      // « À partir de » = EXACTEMENT le devis serveur avec les options par
+      // défaut → la carte et le premier devis affichent le même montant.
+      const fromPrice = computeQuote(
+        { conceptLabel: concept.label, boldness, ...DEFAULT_QUOTE_OPTIONS },
+        pricing
+      ).total;
+
+      // Cache par concept : profil + morphologie + audace + moodboard identiques
+      // = image réutilisée. « Régénérer » (fresh) force une nouvelle génération.
+      const cacheKey = makeCacheKey("concepts", [
+        concept.label,
+        [...styleTags].sort(),
+        faceShape,
+        boldness,
+        moodboard ?? "",
+        cfg.provider,
+        cfg.model,
+      ]);
+      if (!fresh) {
+        const cached = await getCachedImage(cacheKey);
+        if (cached) {
+          logAiCall({ task: "concepts", provider: cfg.provider, model: cfg.model, ok: true, cached: true, latencyMs: 0 });
+          return { ...concept, basePrice: fromPrice, image: cached, ai: true };
+        }
+      }
+
       const prompt = buildConceptPromptFr(concept, styleTags, faceShape);
       const result = await generateImage(
         {
@@ -61,14 +90,8 @@ export async function POST(req: Request) {
         "concepts"
       );
       const image = result.ok
-        ? result.dataUrl
+        ? await persistAndCache(cacheKey, "concepts", cfg.provider, result.dataUrl)
         : demoConceptSvg(concept.label, palette.colors, 3 + i);
-      // « À partir de » = EXACTEMENT le devis serveur avec les options par
-      // défaut → la carte et le premier devis affichent le même montant.
-      const fromPrice = computeQuote(
-        { conceptLabel: concept.label, boldness, ...DEFAULT_QUOTE_OPTIONS },
-        pricing
-      ).total;
       return { ...concept, basePrice: fromPrice, image, ai: result.ok };
     })
   );

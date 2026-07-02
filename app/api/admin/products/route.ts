@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { revalidateCatalog } from "@/lib/admin";
 import { productSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
         },
       },
     });
+    revalidateCatalog();
     return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
   } catch (e) {
     console.error("[admin/products] create error:", e);

@@ -57,6 +57,8 @@ export const conceptsGenSchema = z.object({
   faceShape: z.string().max(40).optional(),
   boldness: z.enum(["discret", "equilibre", "affirme"]).default("equilibre"),
   moodboardImage: z.string().max(8_000_000).optional(),
+  // « Régénérer » explicite : ignore le cache en lecture (mais le ré-alimente).
+  fresh: z.boolean().optional(),
 });
 
 export const wornPortraitSchema = z.object({

@@ -9,6 +9,8 @@ import {
 import { generateImage } from "@/lib/ai/image-provider";
 import { demoMoodboardSvg } from "@/lib/ai/demo-visuals";
 import { guard, RULES } from "@/lib/rate-limit";
+import { makeCacheKey, getCachedImage, persistAndCache, logAiCall } from "@/lib/ai/image-store";
+import { getTaskConfig } from "@/lib/configurator-settings";
 
 // Génération d'image : durée bornée explicitement (plan Vercel Pro).
 export const maxDuration = 60;
@@ -36,22 +38,35 @@ export async function POST(req: Request) {
   const styleTags = parsed.data.styleTags as StyleTag[];
   const faceShape = (parsed.data.faceShape as FaceShape) ?? null;
   const palette = profilePalette(styleTags);
+  const paletteOut = { name: palette.name, colors: palette.colors, material: palette.material };
+
+  // Cache : même profil (tags+morphologie) + même provider/modèle = même
+  // planche réutilisée — un aller-retour à l'étape Style ne coûte plus rien.
+  const cfg = await getTaskConfig("moodboard");
+  const cacheKey = makeCacheKey("moodboard", [
+    [...styleTags].sort(),
+    faceShape,
+    cfg.provider,
+    cfg.model,
+  ]);
+  const cached = await getCachedImage(cacheKey);
+  if (cached) {
+    logAiCall({ task: "moodboard", provider: cfg.provider, model: cfg.model, ok: true, cached: true, latencyMs: 0 });
+    return NextResponse.json({ ai: true, image: cached, palette: paletteOut });
+  }
 
   const prompt = buildMoodboardPromptFr(styleTags, faceShape);
   const result = await generateImage({ prompt, size: "1536x1024" }, "moodboard");
 
   if (result.ok) {
-    return NextResponse.json({
-      ai: true,
-      image: result.dataUrl,
-      palette: { name: palette.name, colors: palette.colors, material: palette.material },
-    });
+    const url = await persistAndCache(cacheKey, "moodboard", cfg.provider, result.dataUrl);
+    return NextResponse.json({ ai: true, image: url, palette: paletteOut });
   }
 
   // Repli démo (jamais d'erreur visible au client pour ce visuel).
   return NextResponse.json({
     ai: false,
     image: demoMoodboardSvg(palette.colors, palette.material),
-    palette: { name: palette.name, colors: palette.colors, material: palette.material },
+    palette: paletteOut,
   });
 }

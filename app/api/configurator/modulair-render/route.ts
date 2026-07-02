@@ -3,6 +3,8 @@ import { modulairSelectionSchema } from "@/lib/validations";
 import { buildModulairPromptFr, type ModulairSelection } from "@/lib/modulair";
 import { generateImage } from "@/lib/ai/image-provider";
 import { guard, RULES } from "@/lib/rate-limit";
+import { makeCacheKey, getCachedImage, persistAndCache, logAiCall } from "@/lib/ai/image-store";
+import { getTaskConfig } from "@/lib/configurator-settings";
 
 // Génération d'image : durée bornée explicitement.
 export const maxDuration = 60;
@@ -26,8 +28,20 @@ export async function POST(req: Request) {
   const parsed = modulairSelectionSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "validation" }, { status: 422 });
 
+  // Cache : une combinaison MODUL'AIR est déterministe → même sélection,
+  // même rendu. Très fort taux de réutilisation entre visiteurs.
+  const cfg = await getTaskConfig("concepts");
+  const cacheKey = makeCacheKey("modulair", [parsed.data, cfg.provider, cfg.model]);
+  const cached = await getCachedImage(cacheKey);
+  if (cached) {
+    logAiCall({ task: "concepts", provider: cfg.provider, model: cfg.model, ok: true, cached: true, latencyMs: 0 });
+    return NextResponse.json({ image: cached });
+  }
+
   const prompt = buildModulairPromptFr(parsed.data as ModulairSelection);
   const result = await generateImage({ prompt, size: "1024x1024" }, "concepts");
   if (!result.ok) return NextResponse.json({ error: "unavailable" }, { status: 503 });
-  return NextResponse.json({ image: result.dataUrl });
+
+  const url = await persistAndCache(cacheKey, "modulair", cfg.provider, result.dataUrl);
+  return NextResponse.json({ image: url });
 }
