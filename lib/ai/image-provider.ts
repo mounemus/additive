@@ -221,11 +221,32 @@ async function openaiEdit(
  * blanc pur + détourage côté client (bg:'white'). Hérité de
  * generate_frame_overlay du plugin.
  */
+/** Convertit une URL http(s) en data URL (référence inline pour Gemini). */
+async function toDataUrl(src: string): Promise<string | null> {
+  if (src.startsWith("data:")) return src;
+  if (!/^https?:\/\//.test(src)) return null;
+  try {
+    const res = await fetch(src);
+    if (!res.ok) return null;
+    const mime = res.headers.get("content-type")?.split(";")[0] || "image/png";
+    if (!mime.startsWith("image/")) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateFrameOverlay(opts: {
   prompt: string;
   conceptImage?: string;
 }): Promise<{ ok: true; dataUrl: string; bg: "transparent" | "white" } | { ok: false }> {
   const { provider, model } = await getTaskConfig("frameOverlay");
+  // L'image du concept peut être une URL distante : on l'inline pour que
+  // Gemini reçoive TOUJOURS la référence (fidélité de la façade).
+  if (opts.conceptImage && !opts.conceptImage.startsWith("data:")) {
+    opts = { ...opts, conceptImage: (await toDataUrl(opts.conceptImage)) ?? undefined };
+  }
   // Avec l'image du concept, Gemini la reproduit fidèlement (OpenAI
   // /generations ne prend pas d'image en entrée) → Gemini en tête.
   const order = opts.conceptImage

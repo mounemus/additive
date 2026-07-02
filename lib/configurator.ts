@@ -485,6 +485,19 @@ export type QuoteInput = {
   urgency: string;
 };
 
+/**
+ * Options par défaut du devis (celles présélectionnées à l'écran Prix).
+ * Partagées entre le client (état initial) et le serveur (prix « À partir de »
+ * des cartes concept) pour que carte et devis au premier choix soient IDENTIQUES.
+ */
+export const DEFAULT_QUOTE_OPTIONS = {
+  material: "pa12-standard",
+  finish: "standard",
+  lensType: "sans-correction",
+  delivery: "standard",
+  urgency: "none",
+} as const;
+
 export type QuoteBreakdown = {
   base: number;
   material: number;
@@ -506,22 +519,29 @@ function priceOf(list: { id: string; price: number }[], id: string): number {
  * Recalcule le devis à partir des entrées brutes et de la grille admin.
  * À n'utiliser QUE côté serveur — le client n'affiche jamais un prix
  * qu'il a calculé lui-même. Aucun frais « génération IA ».
+ *
+ * COHÉRENCE CARTE ↔ DEVIS : la base est le prix du CONCEPT choisi
+ * (CONCEPT_LIBRARY, celui affiché « À partir de » sur la carte), pas la base
+ * générique de la grille — celle-ci ne sert que de repli sans concept connu.
+ * La complexité du concept étant déjà tarifée dans son prix de base, le
+ * coefficient ne s'applique qu'au SURCOÛT matériau. Ainsi, au premier choix
+ * (options par défaut toutes incluses), total devis = prix affiché sur la carte.
  */
 export function computeQuote(input: QuoteInput, pricing: PricingConfig): QuoteBreakdown {
   const tpl = input.conceptLabel ? conceptByLabel(input.conceptLabel) : undefined;
   const complexity = tpl?.complexity ?? "medium";
   const complexityCoef = pricing.complexity[complexity] ?? 1;
 
-  const base = pricing.base + BOLDNESS_PRICE[input.boldness ?? "equilibre"];
-  const material = priceOf(pricing.materials, input.material);
+  const conceptBase = tpl?.basePrice ?? pricing.base;
+  const base = conceptBase + BOLDNESS_PRICE[input.boldness ?? "equilibre"];
+  // Surcoût matériau pondéré par la complexité d'impression du concept.
+  const material = Math.round(priceOf(pricing.materials, input.material) * complexityCoef);
   const finish = priceOf(pricing.finishes, input.finish);
   const lens = priceOf(pricing.lenses, input.lensType);
   const delivery = priceOf(pricing.delivery, input.delivery);
   const urgency = priceOf(pricing.urgency, input.urgency);
 
-  // Le coefficient de complexité s'applique à la structure (base + matériau).
-  const structural = Math.round((base + material) * complexityCoef);
-  const subtotal = structural + finish + lens + delivery + urgency;
+  const subtotal = base + material + finish + lens + delivery + urgency;
   const margin = Math.round(subtotal * (pricing.marginRate ?? 0));
   const total = subtotal + margin;
 

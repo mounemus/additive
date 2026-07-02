@@ -50,12 +50,15 @@ export function FaceTryon({
   useEffect(() => cleanup, [cleanup]);
 
   // Prépare la façade : neutre tant que la vraie n'est pas là, puis bascule.
+  const realFrameRef = useRef(false); // la façade RÉELLE est-elle en place ?
   useEffect(() => {
     let cancelled = false;
-    // Affiche d'abord la façade neutre pour ne jamais bloquer l'essayage.
+    // Affiche d'abord la façade neutre pour ne jamais bloquer l'essayage —
+    // sans JAMAIS écraser la vraie façade si elle est arrivée entre-temps
+    // (realFrameRef, pas l'état React : pas de closure périmée).
     if (!frameImgRef.current) {
       prepareFrame(NEUTRAL_FRAME, "transparent").then((img) => {
-        if (!cancelled && img && !frameReady) frameImgRef.current = img;
+        if (!cancelled && img && !realFrameRef.current) frameImgRef.current = img;
       });
     }
     if (frameSrc) {
@@ -63,9 +66,12 @@ export function FaceTryon({
       prepareFrame(frameSrc, frameBg).then((img) => {
         if (!cancelled && img) {
           frameImgRef.current = img;
+          realFrameRef.current = true;
           setFrameReady(true);
         }
       });
+    } else {
+      realFrameRef.current = false;
     }
     return () => {
       cancelled = true;
@@ -116,14 +122,20 @@ export function FaceTryon({
           noFaceRef.current = 0;
           // Coordonnées en MIROIR (x → W - x) pour coller à la vidéo selfie.
           const p = (i: number) => ({ x: W - landmarks[i].x * W, y: landmarks[i].y * H });
-          const tL = p(234);
-          const tR = p(454);
+          const tA = p(234);
+          const tB = p(454);
           const eL = p(33);
           const eR = p(263);
-          const targetW = Math.hypot(tR.x - tL.x, tR.y - tL.y) * 1.02;
-          const cx = (tL.x + tR.x) / 2;
+          const targetW = Math.hypot(tB.x - tA.x, tB.y - tA.y) * 1.02;
+          const cx = (tA.x + tB.x) / 2;
           const cy = (eL.y + eR.y) / 2;
-          const a = Math.atan2(tR.y - tL.y, tR.x - tL.x);
+          // Angle de la ligne des tempes ORDONNÉE gauche→droite EN ESPACE ÉCRAN.
+          // Après le miroir, 234/454 s'inversent : sans cet ordre, atan2 rend
+          // ±180° (façade dessinée à l'envers) et le filtre devient instable au
+          // passage +π/−π (monture qui tournoie). Ici l'angle reste borné ±90°.
+          const left = tA.x <= tB.x ? tA : tB;
+          const right = tA.x <= tB.x ? tB : tA;
+          const a = Math.atan2(right.y - left.y, right.x - left.x);
 
           // Filtre One-Euro : stable à l'arrêt, réactif en mouvement.
           if (!filtersRef.current) filtersRef.current = makeFilters();
@@ -205,6 +217,13 @@ export function FaceTryon({
           <div className="absolute left-4 top-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white backdrop-blur">
               <Loader2 className="h-3 w-3 animate-spin" /> Préparation de votre monture…
+            </span>
+          </div>
+        )}
+        {status === "live" && !preparing && !frameSrc && (
+          <div className="absolute left-4 top-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white backdrop-blur">
+              Aperçu générique — la façade exacte du concept est momentanément indisponible.
             </span>
           </div>
         )}

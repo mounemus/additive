@@ -51,6 +51,7 @@ import {
   BOLDNESS_LEVELS,
   FACE_SHAPES,
   TAG_LABELS,
+  DEFAULT_QUOTE_OPTIONS,
   answersToProfile,
   type ConfiguratorStep,
   type Boldness,
@@ -129,13 +130,10 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   const [overlayLoading, setOverlayLoading] = useState(false);
   const overlayForRef = useRef<string | null>(null);
 
-  // Devis
-  const [opts, setOpts] = useState({
-    material: "pa12-standard",
-    finish: "standard",
-    lensType: "sans-correction",
-    delivery: "standard",
-    urgency: "none",
+  // Devis — options par défaut PARTAGÉES avec le serveur (prix des cartes) :
+  // au premier choix, le devis affiche exactement le « À partir de » de la carte.
+  const [opts, setOpts] = useState<Record<keyof typeof DEFAULT_QUOTE_OPTIONS, string>>({
+    ...DEFAULT_QUOTE_OPTIONS,
   });
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -254,22 +252,40 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
 
   // ── Façade pour l'essayage AR — PRÉ-générée dès le choix du concept ───────
   // (lancée tôt pour qu'elle soit prête quand l'utilisateur atteint l'essayage)
+  const loadOverlay = useCallback(
+    (concept: EnrichedConcept) => {
+      overlayForRef.current = concept.id;
+      setOverlay(null);
+      setOverlayLoading(true);
+      fetch("/api/configurator/frame-overlay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conceptLabel: concept.label, styleTags: profile, conceptImage: concept.image }),
+      })
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((data) => setOverlay({ image: data.image, bg: data.bg }))
+        .catch(() => {
+          setOverlay(null); // repli : FaceTryon affiche une façade neutre + avis
+          overlayForRef.current = null; // autorise une nouvelle tentative
+        })
+        .finally(() => setOverlayLoading(false));
+    },
+    [profile]
+  );
+
   useEffect(() => {
     if (!selected) return;
     if (overlayForRef.current === selected.id) return;
-    overlayForRef.current = selected.id;
-    setOverlay(null);
-    setOverlayLoading(true);
-    fetch("/api/configurator/frame-overlay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conceptLabel: selected.label, styleTags: profile, conceptImage: selected.image }),
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setOverlay({ image: data.image, bg: data.bg }))
-      .catch(() => setOverlay(null)) // repli : FaceTryon utilise une façade neutre
-      .finally(() => setOverlayLoading(false));
-  }, [selected, profile]);
+    loadOverlay(selected);
+  }, [selected, loadOverlay]);
+
+  // Si la première génération a échoué, on retente à l'entrée de l'essayage.
+  useEffect(() => {
+    if (step === "tryon" && selected && !overlay && !overlayLoading) {
+      loadOverlay(selected);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // ── Suppression des photos (confidentialité) ──────────────────────────────
   function deletePhotos() {
