@@ -1,6 +1,7 @@
 import { Printer, Atom, GitBranch, PackageCheck, Recycle, Puzzle } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
+import { t, type Locale } from "@/lib/i18n";
 
 const ICONS = [Printer, Atom, GitBranch, PackageCheck, Recycle, Puzzle];
 
@@ -13,9 +14,11 @@ type TechnologyContent = {
 export function TechnologySection({
   content,
   compact = false,
+  locale = "fr",
 }: {
   content: TechnologyContent;
   compact?: boolean;
+  locale?: Locale;
 }) {
   const blocks = compact ? content.blocks.slice(0, 6) : content.blocks;
   return (
@@ -29,7 +32,7 @@ export function TechnologySection({
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-[#0b0d10] via-[#0b0d10]/55 to-[#0b0d10]" />
       <div className="container relative">
         <FadeIn>
-          <p className="eyebrow mb-4">Technologie</p>
+          <p className="eyebrow mb-4">{t("eyebrow.technology", locale)}</p>
         </FadeIn>
         <AnimatedText
           text={content.title}

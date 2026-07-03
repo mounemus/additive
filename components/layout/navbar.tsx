@@ -7,25 +7,44 @@ import { Menu, X, ArrowUpRight, Search, User, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { t, type Locale } from "@/lib/i18n";
 
-const NAV_LINKS = [
-  { href: "/collections", label: "Collections" },
-  { href: "/produits", label: "Modèles" },
-  { href: "/personnalisation", label: "Personnalisation" },
-  { href: "/lookbook", label: "Lookbook" },
-  { href: "/technologie", label: "Technologie" },
-  { href: "/manifeste", label: "Manifeste" },
-  { href: "/contact", label: "Contact" },
-];
+/**
+ * Liens de navigation par locale. Les routes EN n'existent que pour les pages
+ * marketing traduites ; le configurateur (/personnalisation) et le lookbook
+ * restent en français pour l'instant.
+ */
+const NAV_LINKS: Record<Locale, { href: string; label: string }[]> = {
+  fr: [
+    { href: "/collections", label: "Collections" },
+    { href: "/produits", label: "Modèles" },
+    { href: "/personnalisation", label: "Personnalisation" },
+    { href: "/lookbook", label: "Lookbook" },
+    { href: "/technologie", label: "Technologie" },
+    { href: "/manifeste", label: "Manifeste" },
+    { href: "/contact", label: "Contact" },
+  ],
+  en: [
+    { href: "/en/collections", label: "Collections" },
+    { href: "/personnalisation", label: "Customize" },
+    { href: "/en/technology", label: "Technology" },
+    { href: "/en/manifesto", label: "Manifesto" },
+    { href: "/en/about", label: "About" },
+    { href: "/en/contact", label: "Contact" },
+  ],
+};
 
-export function Navbar() {
+export function Navbar({ locale = "fr" }: { locale?: Locale }) {
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const lastYRef = useRef(0);
   const pathname = usePathname();
+  const links = NAV_LINKS[locale];
+  const home = locale === "en" ? "/en" : "/";
 
   useEffect(() => {
     const onScroll = () => {
@@ -43,6 +62,13 @@ export function Navbar() {
 
   useEffect(() => setOpen(false), [pathname]);
 
+  const isActive = (href: string) => {
+    if (!pathname) return false;
+    // Évite que "/en" (accueil EN) marque tous les liens EN comme actifs.
+    if (href === home) return pathname === home;
+    return pathname.startsWith(href);
+  };
+
   return (
     <header
       className={cn(
@@ -56,11 +82,11 @@ export function Navbar() {
       )}
     >
       <div className="container flex h-16 items-center justify-between md:h-20">
-        <Logo />
+        <Logo locale={locale} />
 
-        <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigation principale">
-          {NAV_LINKS.map((link) => {
-            const active = pathname?.startsWith(link.href);
+        <nav className="hidden items-center gap-6 lg:flex" aria-label={t("nav.aria.main", locale)}>
+          {links.map((link) => {
+            const active = isActive(link.href);
             return (
               <Link
                 key={link.href}
@@ -84,29 +110,30 @@ export function Navbar() {
         <div className="hidden items-center gap-1 lg:flex">
           <Link
             href="/produits"
-            aria-label="Rechercher des modèles"
+            aria-label={t("nav.aria.search", locale)}
             className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <Search className="h-[18px] w-[18px]" />
           </Link>
           <Link
             href="/account"
-            aria-label="Compte"
+            aria-label={t("nav.aria.account", locale)}
             className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <User className="h-[18px] w-[18px]" />
           </Link>
           <Link
             href="/cart"
-            aria-label="Panier"
+            aria-label={t("nav.aria.cart", locale)}
             className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <ShoppingBag className="h-[18px] w-[18px]" />
           </Link>
           <ThemeToggle />
+          <LocaleSwitcher className="ml-1" />
           <Link href="/personnalisation" className="ml-2">
             <Button size="sm" className="gap-1.5">
-              Créer ma monture
+              {t("cta.createFrame", locale)}
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
@@ -117,7 +144,7 @@ export function Navbar() {
           <button
             className="focus-ring flex h-11 w-11 items-center justify-center rounded-full border border-border"
             onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-label={open ? t("nav.aria.closeMenu", locale) : t("nav.aria.openMenu", locale)}
             aria-expanded={open}
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -133,10 +160,10 @@ export function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden border-b border-border bg-background lg:hidden"
-            aria-label="Navigation mobile"
+            aria-label={t("nav.aria.mobile", locale)}
           >
             <div className="container flex flex-col gap-1 py-6">
-              {NAV_LINKS.map((link, i) => (
+              {links.map((link, i) => (
                 <motion.div
                   key={link.href}
                   initial={{ opacity: 0, x: -12 }}
@@ -145,21 +172,22 @@ export function Navbar() {
                 >
                   <Link
                     href={link.href}
-                    aria-current={pathname?.startsWith(link.href) ? "page" : undefined}
+                    aria-current={isActive(link.href) ? "page" : undefined}
                     className={cn(
                       "focus-ring block rounded-sm py-2.5 font-display text-2xl font-medium",
-                      pathname?.startsWith(link.href)
-                        ? "text-accent-blue"
-                        : "text-foreground"
+                      isActive(link.href) ? "text-accent-blue" : "text-foreground"
                     )}
                   >
                     {link.label}
                   </Link>
                 </motion.div>
               ))}
+              <div className="mt-2">
+                <LocaleSwitcher />
+              </div>
               <Link href="/personnalisation" className="mt-4">
                 <Button className="w-full" size="lg">
-                  Créer ma monture
+                  {t("cta.createFrame", locale)}
                 </Button>
               </Link>
             </div>

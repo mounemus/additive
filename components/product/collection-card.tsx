@@ -5,14 +5,29 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import type { CatalogCollection } from "@/lib/catalog";
+import { t, type Locale } from "@/lib/i18n";
 
 export function CollectionCard({
   collection,
   index = 0,
+  locale = "fr",
 }: {
   collection: CatalogCollection;
   index?: number;
+  locale?: Locale;
 }) {
+  const href =
+    locale === "en"
+      ? `/en/collections/${collection.slug}`
+      : `/collections/${collection.slug}`;
+  const ariaLabel =
+    locale === "en"
+      ? `Discover the ${collection.name} collection`
+      : `Découvrir la collection ${collection.name}`;
+  const countLabel =
+    collection.productCount > 1
+      ? t("product.models", locale)
+      : t("product.model", locale);
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
@@ -22,11 +37,7 @@ export function CollectionCard({
       whileHover="hover"
       className="group relative overflow-hidden rounded-3xl bg-[#0a0a0a]"
     >
-      <Link
-        href={`/collections/${collection.slug}`}
-        className="block"
-        aria-label={`Découvrir la collection ${collection.name}`}
-      >
+      <Link href={href} className="block" aria-label={ariaLabel}>
         <div className="relative aspect-[3/4] sm:aspect-[4/5]">
           {collection.image && (
             <motion.div
@@ -46,8 +57,9 @@ export function CollectionCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-7">
             <p className="eyebrow mb-2 !text-white/60">
-              {collection.productCount} modèle{collection.productCount > 1 ? "s" : ""}
-              {collection.minPrice != null && ` · à partir de ${collection.minPrice} $`}
+              {collection.productCount} {countLabel}
+              {collection.minPrice != null &&
+                ` · ${t("product.from", locale)} ${collection.minPrice} $`}
             </p>
             <h3 className="font-display text-3xl font-bold text-white">
               {collection.name}
@@ -59,7 +71,7 @@ export function CollectionCard({
               variants={{ hover: { x: 6 } }}
               className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-white"
             >
-              Découvrir <ArrowRight className="h-4 w-4" />
+              {t("product.discover", locale)} <ArrowRight className="h-4 w-4" />
             </motion.span>
           </div>
         </div>

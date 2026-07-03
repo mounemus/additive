@@ -4,17 +4,19 @@ import { AnimatedText } from "@/components/motion/animated-text";
 import { ContactForm } from "@/components/sections/contact-form";
 import { buildMetadata } from "@/lib/seo";
 
+// Même politique de rendu que /contact.
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
   title: "Contact",
   description:
-    "Contactez ADDITIVE : achat, personnalisation, partenariat détaillant, presse ou investissement. Lunetterie imprimée en 3D, Montréal.",
-  path: "/contact",
-  alternate: "/en/contact",
+    "Contact ADDITIVE: purchase, customization, retail partnership, press or investment. 3D-printed eyewear, Montréal.",
+  path: "/en/contact",
+  locale: "en",
+  alternate: "/contact",
 });
 
-export default function ContactPage({
+export default function EnglishContactPage({
   searchParams,
 }: {
   searchParams: { type?: string };
@@ -27,13 +29,13 @@ export default function ContactPage({
             <p className="eyebrow mb-4">Contact</p>
           </FadeIn>
           <AnimatedText
-            text="Parlons de votre prochaine paire."
+            text="Let’s talk about your next pair."
             className="font-display text-display-md font-bold"
           />
           <FadeIn delay={0.2}>
             <p className="mt-6 leading-relaxed text-muted">
-              Achat, personnalisation, partenariat, presse ou investissement :
-              chaque demande arrive directement dans notre atelier montréalais.
+              Purchase, customization, partnership, press or investment:
+              every request lands directly in our Montréal workshop.
             </p>
             <div className="mt-8 space-y-6">
               <div className="flex items-start gap-4">
@@ -51,15 +53,15 @@ export default function ContactPage({
               <div className="flex items-start gap-4">
                 <MapPin className="mt-0.5 h-5 w-5 text-accent-blue" />
                 <div>
-                  <p className="font-medium">Atelier</p>
+                  <p className="font-medium">Workshop</p>
                   <p className="text-muted">Montréal, Québec, Canada</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
                 <Clock className="mt-0.5 h-5 w-5 text-accent-blue" />
                 <div>
-                  <p className="font-medium">Réponse</p>
-                  <p className="text-muted">Sous 48 h ouvrables</p>
+                  <p className="font-medium">Response</p>
+                  <p className="text-muted">Within 48 business hours</p>
                 </div>
               </div>
             </div>
@@ -68,7 +70,7 @@ export default function ContactPage({
 
         <FadeIn delay={0.15}>
           <div className="rounded-3xl border border-border bg-surface p-8 md:p-10">
-            <ContactForm defaultType={searchParams.type} />
+            <ContactForm defaultType={searchParams.type} locale="en" />
           </div>
         </FadeIn>
       </div>

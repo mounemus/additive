@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { t, type Locale } from "@/lib/i18n";
 
-export function NewsletterForm() {
+export function NewsletterForm({ locale = "fr" }: { locale?: Locale }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
 
@@ -28,7 +29,7 @@ export function NewsletterForm() {
   if (state === "done") {
     return (
       <p className="flex items-center gap-2 text-sm text-accent-blue">
-        <Check className="h-4 w-4" /> Merci — vous êtes inscrit·e.
+        <Check className="h-4 w-4" /> {t("footer.newsletter.done", locale)}
       </p>
     );
   }
@@ -40,14 +41,14 @@ export function NewsletterForm() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="Votre email"
-        aria-label="Email pour l’infolettre"
+        placeholder={t("footer.newsletter.placeholder", locale)}
+        aria-label={t("footer.newsletter.aria.email", locale)}
         className="w-full bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
       />
       <button
         type="submit"
         disabled={state === "loading"}
-        aria-label="S’inscrire à l’infolettre"
+        aria-label={t("footer.newsletter.aria.submit", locale)}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-80 disabled:opacity-50"
       >
         {state === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}

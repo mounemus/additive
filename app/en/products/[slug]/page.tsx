@@ -14,30 +14,29 @@ import { getProduct, getRelatedProducts } from "@/lib/catalog";
 import { buildMetadata, productJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
 
-// ISR : contenu servi en cache et régénéré au plus toutes les 5 min
-// (les mutations admin déclenchent une revalidation immédiate).
+// ISR : même politique que /produits/[slug] (5 min).
 export const revalidate = 300;
 
 const WHY_POINTS = [
   {
     icon: Feather,
-    title: "Légèreté réelle",
-    body: "Environ 18 g sur le nez : le nylon PA12 fritté permet d’alléger la structure sans la fragiliser.",
+    title: "Genuinely light",
+    body: "Around 18 g on the nose: sintered PA12 nylon lightens the structure without weakening it.",
   },
   {
     icon: ShieldCheck,
-    title: "Robustesse mémoire",
-    body: "Flexible et doté d’une excellente mémoire de forme, il retrouve sa géométrie après torsion.",
+    title: "Shape-memory tough",
+    body: "Flexible, with excellent shape memory, it returns to its geometry after twisting.",
   },
   {
     icon: Sparkles,
-    title: "Personnalisable",
-    body: "Cette monture peut servir de base à une personnalisation complète : forme, couleur, branches, verres.",
+    title: "Customizable",
+    body: "This frame can serve as the base for a full customization: shape, colour, temples, lenses.",
   },
   {
     icon: Leaf,
-    title: "Produite à la demande",
-    body: "Aucun stock, aucun invendu : votre paire est imprimée après votre commande, à Montréal.",
+    title: "Made on demand",
+    body: "No stock, nothing unsold: your pair is printed after your order, in Montréal.",
   },
 ];
 
@@ -47,17 +46,18 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const product = await getProduct(params.slug);
-  if (!product) return buildMetadata({ title: "Modèle" });
+  if (!product) return buildMetadata({ title: "Model", locale: "en" });
   return buildMetadata({
-    title: product.seoTitle ?? product.name,
+    title: `${product.name} — 3D-printed frame`,
     description: product.seoDescription ?? product.shortDescription ?? undefined,
-    path: `/produits/${product.slug}`,
+    path: `/en/products/${product.slug}`,
     image: product.image,
-    alternate: `/en/products/${product.slug}`,
+    locale: "en",
+    alternate: `/produits/${product.slug}`,
   });
 }
 
-export default async function ProductPage({
+export default async function EnglishProductPage({
   params,
 }: {
   params: { slug: string };
@@ -73,7 +73,7 @@ export default async function ProductPage({
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(productJsonLd(product)),
+          __html: JSON.stringify(productJsonLd(product, "en")),
         }}
       />
       <section className="pb-14 pt-28 md:pt-32">
@@ -82,7 +82,7 @@ export default async function ProductPage({
             <ProductGallery images={product.images} name={product.name} />
           </FadeIn>
           <FadeIn y={16} delay={0.1}>
-            <ProductDetails product={product} />
+            <ProductDetails product={product} locale="en" />
           </FadeIn>
         </div>
       </section>
@@ -91,12 +91,12 @@ export default async function ProductPage({
         <section className="border-t border-border py-12">
           <div className="container">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="font-display text-display-md font-bold">Vue 3D</h2>
-              <p className="text-sm text-muted">Faites pivoter, zoomez, explorez la monture sous tous les angles.</p>
+              <h2 className="font-display text-display-md font-bold">3D view</h2>
+              <p className="text-sm text-muted">Rotate, zoom, explore the frame from every angle.</p>
             </div>
             <Model3DViewer
               src={product.model3dUrl}
-              alt={`${product.name} — modèle 3D`}
+              alt={`${product.name} — 3D model`}
               poster={product.image}
               className="aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border"
             />
@@ -108,9 +108,10 @@ export default async function ProductPage({
         <section className="border-t border-border py-14">
           <div className="container grid gap-10 lg:grid-cols-[1fr_1.5fr]">
             <h2 className="font-display text-display-md font-bold">
-              L’histoire du design
+              The design story
             </h2>
             <FadeIn>
+              {/* Description affichée telle quelle (contenu DB, déjà rédigé en anglais). */}
               <p className="text-lg leading-relaxed text-muted">
                 {product.description}
               </p>
@@ -123,16 +124,16 @@ export default async function ProductPage({
         <section className="border-t border-border py-12 md:py-16">
           <div className="container grid items-center gap-10 lg:grid-cols-[1fr_1.2fr]">
             <div>
-              <p className="eyebrow mb-3">Système modulaire</p>
-              <h2 className="font-display text-display-md font-bold">Une monture qui se compose.</h2>
+              <p className="eyebrow mb-3">Modular system</p>
+              <h2 className="font-display text-display-md font-bold">A frame that composes itself.</h2>
               <p className="mt-4 leading-relaxed text-muted">
-                {product.name} appartient à MODUL’AIR : face, branches et verres
-                sont interchangeables. Réparez, faites évoluer ou recolorez un
-                module sans racheter la paire.
+                {product.name} belongs to MODUL’AIR: front, temples and lenses
+                are interchangeable. Repair, upgrade or recolour a module
+                without buying the pair again.
               </p>
               <Link href="/personnalisation/modulair" className="mt-7 inline-block">
                 <Button size="lg" className="gap-2">
-                  <Sparkles className="h-4 w-4" /> Moduler cette base
+                  <Sparkles className="h-4 w-4" /> Modulate this base
                 </Button>
               </Link>
             </div>
@@ -146,7 +147,7 @@ export default async function ProductPage({
       <section className="section-dark py-14 md:py-20">
         <div className="container">
           <AnimatedText
-            text="Pourquoi cette monture ?"
+            text="Why this frame?"
             className="font-display text-display-md font-bold"
           />
           <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
@@ -167,16 +168,16 @@ export default async function ProductPage({
         <section className="py-14 md:py-20">
           <div className="container">
             <h2 className="mb-8 font-display text-display-md font-bold">
-              Vous aimerez aussi
+              You may also like
             </h2>
-            <ProductGrid products={related} />
+            <ProductGrid products={related} locale="en" />
           </div>
         </section>
       )}
 
       <CTASection
-        title={`Faites de ${product.name} votre point de départ.`}
-        button="Personnaliser ce modèle"
+        title={`Make ${product.name} your starting point.`}
+        button="Customize this model"
         href={`/personnalisation?base=${product.slug}`}
       />
     </>

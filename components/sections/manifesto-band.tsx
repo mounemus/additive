@@ -4,18 +4,17 @@ import { motion, useReducedMotion } from "framer-motion";
 import { FadeIn } from "@/components/motion/fade-in";
 import { RevealImage } from "@/components/motion/reveal-image";
 import { Parallax } from "@/components/motion/parallax";
+import { MANIFESTO_BAND_COPY, type Locale } from "@/lib/i18n";
 
 /**
  * Bande manifeste éditoriale — typographie monumentale, révélation ligne par
  * ligne, mot-clé bleu, + visuel IA génératif. « Votre visage n'est pas standard… »
+ * Chaînes FR/EN centralisées dans lib/i18n.ts (MANIFESTO_BAND_COPY).
  */
-const LINES = [
-  [{ t: "Votre visage" }, { t: "n’est pas", accent: true }, { t: "standard." }],
-  [{ t: "Vos lunettes" }, { t: "ne devraient", accent: true }, { t: "pas l’être." }],
-];
-
-export function ManifestoBand() {
+export function ManifestoBand({ locale = "fr" }: { locale?: Locale }) {
   const reduce = useReducedMotion();
+  const copy = MANIFESTO_BAND_COPY[locale];
+  const LINES = copy.lines;
   return (
     <section className="overflow-hidden py-14 md:py-20">
       <div className="container grid items-center gap-12 lg:grid-cols-[1.25fr_1fr]">
@@ -42,10 +41,7 @@ export function ManifestoBand() {
 
           <FadeIn delay={0.3}>
             <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted">
-              La fabrication additive nous libère des tailles uniques pensées pour
-              personne. Chaque monture est imprimée à la demande, ajustée à une
-              morphologie, accordée à un style — légère, précise, et seulement
-              quand vous la voulez.
+              {copy.paragraph}
             </p>
           </FadeIn>
         </div>

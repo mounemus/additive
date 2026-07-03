@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { MagneticButton } from "@/components/motion/magnetic-button";
 import { formatPrice, cn } from "@/lib/utils";
 import type { CatalogProduct } from "@/lib/catalog";
+import { t, type Locale } from "@/lib/i18n";
 
 const COLOR_MAP: Record<string, string> = {
   black: "#111111",
@@ -17,13 +18,21 @@ const COLOR_MAP: Record<string, string> = {
   orange: "#ff6a2a",
 };
 
-export function ProductDetails({ product }: { product: CatalogProduct }) {
+export function ProductDetails({
+  product,
+  locale = "fr",
+}: {
+  product: CatalogProduct;
+  locale?: Locale;
+}) {
   const [selectedColor, setSelectedColor] = useState(product.colors[0] ?? null);
+  const collectionHref = (slug: string) =>
+    locale === "en" ? `/en/collections/${slug}` : `/collections/${slug}`;
 
   return (
     <div>
       {product.collection && (
-        <Link href={`/collections/${product.collection.slug}`}>
+        <Link href={collectionHref(product.collection.slug)}>
           <Badge variant="blue">{product.collection.name}</Badge>
         </Link>
       )}
@@ -42,14 +51,15 @@ export function ProductDetails({ product }: { product: CatalogProduct }) {
       {product.colors.length > 0 && (
         <div className="mt-8">
           <p className="mb-3 text-sm font-medium">
-            Coloris{selectedColor ? ` — ${selectedColor}` : ""}
+            {t("product.colors", locale)}
+            {selectedColor ? ` — ${selectedColor}` : ""}
           </p>
           <div className="flex gap-3">
             {product.colors.map((c) => (
               <button
                 key={c}
                 onClick={() => setSelectedColor(c)}
-                aria-label={`Coloris ${c}`}
+                aria-label={`${t("product.colorAria", locale)} ${c}`}
                 aria-pressed={selectedColor === c}
                 className={cn(
                   "h-9 w-9 rounded-full ring-1 ring-black/10 transition-all",
@@ -70,13 +80,15 @@ export function ProductDetails({ product }: { product: CatalogProduct }) {
           >
             <Button size="lg" className="w-full sm:w-auto">
               <Sparkles className="h-4 w-4" />
-              Demander une personnalisation
+              {t("product.requestCustomization", locale)}
             </Button>
           </Link>
         </MagneticButton>
-        <Link href={`/contact?type=achat&modele=${product.slug}`}>
+        <Link
+          href={`${locale === "en" ? "/en/contact" : "/contact"}?type=achat&modele=${product.slug}`}
+        >
           <Button variant="outline" size="lg" className="w-full sm:w-auto">
-            Commander ce modèle
+            {t("product.order", locale)}
           </Button>
         </Link>
       </div>
@@ -86,7 +98,7 @@ export function ProductDetails({ product }: { product: CatalogProduct }) {
           <div className="flex gap-4">
             <Layers className="mt-0.5 h-5 w-5 shrink-0 text-accent-blue" />
             <div>
-              <p className="text-sm font-medium">Matériaux</p>
+              <p className="text-sm font-medium">{t("product.materials", locale)}</p>
               <p className="mt-1 text-sm text-muted">
                 {product.materials.join(" · ")}
               </p>
@@ -97,14 +109,14 @@ export function ProductDetails({ product }: { product: CatalogProduct }) {
           <div className="flex gap-4">
             <Ruler className="mt-0.5 h-5 w-5 shrink-0 text-accent-blue" />
             <div>
-              <p className="text-sm font-medium">Dimensions</p>
+              <p className="text-sm font-medium">{t("product.dimensions", locale)}</p>
               <p className="mt-1 text-sm text-muted">{product.dimensions}</p>
             </div>
           </div>
         )}
         {product.features.length > 0 && (
           <div>
-            <p className="mb-3 text-sm font-medium">Caractéristiques</p>
+            <p className="mb-3 text-sm font-medium">{t("product.features", locale)}</p>
             <ul className="space-y-2">
               {product.features.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 text-sm text-muted">

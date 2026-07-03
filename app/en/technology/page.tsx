@@ -2,65 +2,61 @@ import { TechnologySection } from "@/components/sections/technology-section";
 import { CTASection } from "@/components/sections/cta-section";
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
-import { getContent } from "@/lib/catalog";
+import { EN_CONTENT } from "@/lib/i18n";
 import { buildMetadata } from "@/lib/seo";
 
+// Même politique de rendu que /technologie.
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
-  title: "Technologie — Impression 3D SLS et nylon PA12",
+  title: "Technology — SLS 3D printing and PA12 nylon",
   description:
-    "Impression 3D SLS, nylon PA12, design paramétrique, production locale à la demande : la technologie derrière les lunettes ADDITIVE, expliquée simplement.",
-  path: "/technologie",
-  alternate: "/en/technology",
+    "SLS 3D printing, PA12 nylon, parametric design, local on-demand production: the technology behind ADDITIVE eyewear, explained plainly.",
+  path: "/en/technology",
+  locale: "en",
+  alternate: "/technologie",
 });
 
 const PROCESS = [
   {
     step: "01",
-    title: "Conception paramétrique",
-    body: "Le modèle est défini comme un système de paramètres : largeur de face, hauteur de verre, courbure du pont. Vos mesures pilotent la géométrie.",
+    title: "Parametric design",
+    body: "The model is defined as a system of parameters: front width, lens height, bridge curvature. Your measurements drive the geometry.",
   },
   {
     step: "02",
-    title: "Validation design",
-    body: "Un designer vérifie l’équilibre des proportions, le confort des appuis et l’imprimabilité de chaque configuration avant production.",
+    title: "Design validation",
+    body: "A designer checks the balance of proportions, the comfort of contact points and the printability of every configuration before production.",
   },
   {
     step: "03",
-    title: "Frittage laser SLS",
-    body: "Un laser fusionne la poudre de nylon PA12 couche par couche — environ 350 couches par monture. La poudre non frittée est réutilisée.",
+    title: "SLS laser sintering",
+    body: "A laser fuses PA12 nylon powder layer by layer — around 350 layers per frame. Unsintered powder is reused.",
   },
   {
     step: "04",
-    title: "Finition et contrôle",
-    body: "Dépoudrage, micro-billage, teinte dans la masse puis contrôle qualité : chaque paire est inspectée et ajustée à la main avant expédition.",
+    title: "Finishing and control",
+    body: "Depowdering, micro-bead blasting, through-dyeing, then quality control: every pair is inspected and adjusted by hand before shipping.",
   },
 ];
 
-export default async function TechnologyPage() {
-  const technology = await getContent<{
-    title: string;
-    intro: string;
-    blocks: { title: string; body: string }[];
-  }>("technology");
-
+export default function EnglishTechnologyPage() {
   return (
     <>
       <section className="pb-8 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
-            <p className="eyebrow mb-4">Technologie</p>
+            <p className="eyebrow mb-4">Technology</p>
           </FadeIn>
           <AnimatedText
-            text="La fabrication additive, sans le jargon."
+            text="Additive manufacturing, without the jargon."
             className="max-w-4xl font-display text-display-lg font-bold"
           />
           <FadeIn delay={0.2}>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-              Pas de promesses invérifiables : voici concrètement comment vos
-              lunettes sont conçues, imprimées et finies — et pourquoi ce
-              procédé change ce qu’une monture peut être.
+              No unverifiable promises: here is concretely how your glasses
+              are designed, printed and finished — and why this process
+              changes what a frame can be.
             </p>
           </FadeIn>
         </div>
@@ -71,11 +67,11 @@ export default async function TechnologyPage() {
         <div className="container grid gap-12 lg:grid-cols-[1fr_1.4fr]">
           <div className="lg:sticky lg:top-28 lg:self-start">
             <h2 className="font-display text-display-md font-bold">
-              De la mesure à l’objet.
+              From measurement to object.
             </h2>
             <p className="mt-5 leading-relaxed text-muted">
-              Une chaîne numérique continue : aucune étape n’est sous-traitée à
-              l’approximation. Chaque monture parcourt ces quatre phases.
+              One continuous digital chain: no step is outsourced to
+              approximation. Every frame travels through these four phases.
             </p>
           </div>
           <div className="space-y-6">
@@ -98,11 +94,11 @@ export default async function TechnologyPage() {
         </div>
       </section>
 
-      <TechnologySection content={technology} />
+      <TechnologySection content={EN_CONTENT.technology} locale="en" />
 
       <CTASection
-        title="La technologie n’est pas l’argument. C’est le moyen."
-        button="Découvrir la personnalisation"
+        title="Technology isn’t the argument. It’s the means."
+        button="Discover customization"
       />
     </>
   );

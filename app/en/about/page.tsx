@@ -3,56 +3,56 @@ import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { RevealImage } from "@/components/motion/reveal-image";
 import { CTASection } from "@/components/sections/cta-section";
-import { getContent } from "@/lib/catalog";
+import { EN_CONTENT } from "@/lib/i18n";
 import { buildMetadata } from "@/lib/seo";
 
+// Même politique de rendu que /about.
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
-  title: "À propos — Une startup eyewear montréalaise",
+  title: "About — A Montréal eyewear startup",
   description:
-    "ADDITIVE est une startup canadienne de lunetterie additive basée à Montréal. Design modulaire, impression 3D, personnalisation morphologique et production responsable.",
-  path: "/about",
-  alternate: "/en/about",
+    "ADDITIVE is a Canadian additive-eyewear startup based in Montréal. Modular design, 3D printing, morphological customization and responsible production.",
+  path: "/en/about",
+  locale: "en",
+  alternate: "/about",
 });
 
 const VALUES = [
   {
     icon: MapPin,
-    title: "Montréal, atelier et port d’attache",
-    body: "Conception, prototypage et production à la demande au Québec : circuits courts, contrôle qualité direct et savoir-faire local.",
+    title: "Montréal, workshop and home port",
+    body: "Design, prototyping and on-demand production in Québec: short circuits, direct quality control and local know-how.",
   },
   {
     icon: Factory,
-    title: "Fabrication additive",
-    body: "L’impression 3D SLS n’est pas un gadget marketing : c’est ce qui rend possible la modularité, la personnalisation et la production sans stock.",
+    title: "Additive manufacturing",
+    body: "SLS 3D printing is not a marketing gimmick: it is what makes modularity, customization and stock-free production possible.",
   },
   {
     icon: Users,
-    title: "L’humain au centre",
-    body: "Morphologie, style, personnalité : la technologie sert l’ajustement à la personne, jamais l’inverse.",
+    title: "People at the centre",
+    body: "Morphology, style, personality: technology serves the fit to the person — never the other way around.",
   },
   {
     icon: Store,
-    title: "Un réseau qui grandit",
-    body: "Opticiens, concept stores et détaillants : nous construisons un réseau de partenaires qui partagent notre exigence. Parlons-en.",
+    title: "A growing network",
+    body: "Opticians, concept stores and retailers: we are building a network of partners who share our standards. Let’s talk.",
   },
 ];
 
-export default async function AboutPage() {
-  const brand = await getContent<{ positioning: string; taglineFr: string }>(
-    "brand"
-  );
+export default function EnglishAboutPage() {
+  const brand = EN_CONTENT.brand;
 
   return (
     <>
       <section className="pb-12 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
-            <p className="eyebrow mb-4">À propos</p>
+            <p className="eyebrow mb-4">About</p>
           </FadeIn>
           <AnimatedText
-            text="Une lunetterie née de l’imprimante, élevée à Montréal."
+            text="An eyewear house born of the printer, raised in Montréal."
             className="max-w-4xl font-display text-display-lg font-bold"
           />
           <FadeIn delay={0.2}>
@@ -67,7 +67,7 @@ export default async function AboutPage() {
         <div className="container">
           <RevealImage
             src="/images/collections/hybride.svg"
-            alt="Atelier ADDITIVE — fabrication additive à Montréal"
+            alt="ADDITIVE workshop — additive manufacturing in Montréal"
             className="aspect-[16/7] rounded-3xl"
             sizes="(max-width: 1320px) 100vw, 1320px"
           />
@@ -93,9 +93,9 @@ export default async function AboutPage() {
       </section>
 
       <CTASection
-        title="Détaillant, presse ou simplement curieux ? Écrivez-nous."
-        button="Nous contacter"
-        href="/contact"
+        title="Retailer, press, or simply curious? Write to us."
+        button="Contact us"
+        href="/en/contact"
       />
     </>
   );

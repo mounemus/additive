@@ -1,28 +1,23 @@
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { CTASection } from "@/components/sections/cta-section";
-import { getContent } from "@/lib/catalog";
+import { EN_CONTENT } from "@/lib/i18n";
 import { buildMetadata } from "@/lib/seo";
 
+// Même politique de rendu que /faq.
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
-  title: "Questions fréquentes",
+  title: "Frequently asked questions",
   description:
-    "Solidité du nylon PA12, verres correcteurs, délais de fabrication, personnalisation, entretien : les réponses aux questions fréquentes sur les lunettes imprimées en 3D ADDITIVE.",
-  path: "/faq",
-  alternate: "/en/faq",
+    "PA12 nylon durability, prescription lenses, production lead times, customization, care: answers to the most frequent questions about ADDITIVE 3D-printed eyewear.",
+  path: "/en/faq",
+  locale: "en",
+  alternate: "/faq",
 });
 
-const EXTRA: { q: string; a: string }[] = [
-  { q: "Comment entretenir ma monture imprimée en 3D ?", a: "Nettoyez-la à l’eau tiède savonneuse et séchez-la avec un chiffon doux. Le nylon PA12 supporte bien l’usage quotidien ; évitez toutefois les sources de chaleur extrême prolongée." },
-  { q: "Puis-je remplacer une branche ou un module ?", a: "Sur la collection MODUL’AIR, oui : faces, branches et verres sont interchangeables. Vous pouvez réparer ou faire évoluer un module sans racheter la paire." },
-  { q: "Livrez-vous à l’international ?", a: "Nous expédions depuis Montréal. Pour les modalités exactes de livraison et de retour selon votre pays, contactez-nous — ces informations sont en cours de finalisation." },
-];
-
-export default async function FaqPage() {
-  const base = await getContent<{ q: string; a: string }[]>("faq");
-  const faq = [...(base ?? []), ...EXTRA];
+export default function EnglishFaqPage() {
+  const faq = EN_CONTENT.faq;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -42,7 +37,7 @@ export default async function FaqPage() {
           <FadeIn>
             <p className="eyebrow mb-4">FAQ</p>
           </FadeIn>
-          <AnimatedText text="Questions fréquentes." className="font-display text-display-lg font-bold" />
+          <AnimatedText text="Frequently asked questions." className="font-display text-display-lg font-bold" />
         </div>
       </section>
 
@@ -61,7 +56,7 @@ export default async function FaqPage() {
         </div>
       </section>
 
-      <CTASection title="Une autre question ? Parlons-en." button="Nous contacter" href="/contact" />
+      <CTASection title="Another question? Let’s talk." button="Contact us" href="/en/contact" />
     </>
   );
 }

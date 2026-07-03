@@ -8,6 +8,7 @@ import { ArrowRight, ArrowDown } from "lucide-react";
 import { HeroCanvas } from "@/components/motion/hero-canvas";
 import { MagneticButton } from "@/components/motion/magnetic-button";
 import { Button } from "@/components/ui/button";
+import type { Locale } from "@/lib/i18n";
 
 type HeroContent = {
   eyebrow: string;
@@ -21,10 +22,12 @@ export function HeroSection({
   content,
   videoSrc = "/videos/hero.mp4",
   posterSrc = "/images/editorial/hero-frame.png",
+  locale = "fr",
 }: {
   content: HeroContent;
   videoSrc?: string;
   posterSrc?: string;
+  locale?: Locale;
 }) {
   const reduce = useReducedMotion();
   const [videoFailed, setVideoFailed] = useState(false);
@@ -124,7 +127,7 @@ export function HeroSection({
             </Link>
           </MagneticButton>
           <MagneticButton>
-            <Link href="/collections">
+            <Link href={locale === "en" ? "/en/collections" : "/collections"}>
               <Button
                 variant="outline"
                 size="lg"

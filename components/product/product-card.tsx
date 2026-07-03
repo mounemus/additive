@@ -8,14 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { ColorDots } from "@/components/product/color-dots";
 import { formatPrice } from "@/lib/utils";
 import type { CatalogProduct } from "@/lib/catalog";
+import type { Locale } from "@/lib/i18n";
 
-export function ProductCard({ product }: { product: CatalogProduct }) {
+export function ProductCard({
+  product,
+  locale = "fr",
+}: {
+  product: CatalogProduct;
+  locale?: Locale;
+}) {
+  const href =
+    locale === "en" ? `/en/products/${product.slug}` : `/produits/${product.slug}`;
   return (
     <motion.article
       whileHover="hover"
       className="group relative overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow duration-500 hover:shadow-card-hover"
     >
-      <Link href={`/produits/${product.slug}`} className="block">
+      <Link href={href} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-[#0a0a0a]">
           <motion.div
             variants={{ hover: { scale: 1.06 } }}

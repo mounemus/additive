@@ -17,10 +17,14 @@ import { AnimatedText } from "@/components/motion/animated-text";
 import { Button } from "@/components/ui/button";
 import { getCollections, getProducts, getContent } from "@/lib/catalog";
 import { getMedia } from "@/lib/site-config";
+import { buildMetadata } from "@/lib/seo";
 
 // ISR : contenu servi en cache et régénéré au plus toutes les 5 min
 // (les mutations admin déclenchent une revalidation immédiate).
 export const revalidate = 300;
+
+// Titre/description par défaut (inchangés) + hreflang vers l'accueil EN.
+export const metadata = buildMetadata({ path: "/", alternate: "/en" });
 
 export default async function HomePage() {
   const [hero, technology, cta, collections, featured, media] =

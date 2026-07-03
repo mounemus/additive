@@ -4,6 +4,7 @@ import { useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion, useScroll, useTransform, useMotionValueEvent, type MotionValue } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { SCROLL_THREAD_COPY, t, type Locale } from "@/lib/i18n";
 
 /**
  * Fil rouge animé piloté au scroll — une VRAIE monture 3D (React Three Fiber)
@@ -23,33 +24,7 @@ const Glasses3D = dynamic(
   }
 );
 
-const PHASES = [
-  {
-    eyebrow: "01 — Conception",
-    title: "Conçue autour de vous.",
-    sub: "La géométrie s’adapte à vos mesures — pas l’inverse.",
-    specs: ["Design paramétrique", "Calibré au millimètre"],
-  },
-  {
-    eyebrow: "02 — Modularité",
-    title: "Une géométrie. Des modules.",
-    sub: "Face, branches et verres se composent et se remplacent.",
-    specs: ["Modules interchangeables", "Réparable · évolutive"],
-  },
-  {
-    eyebrow: "03 — Fabrication",
-    title: "Imprimée couche par couche.",
-    sub: "Frittage laser du nylon, sans moule ni stock.",
-    specs: ["Nylon PA12 — SLS", "≈ 350 couches"],
-  },
-  {
-    eyebrow: "04 — Identité",
-    title: "Conçues pour vous.",
-    sub: "Produite à la demande à Montréal — environ 18 g.",
-    specs: ["≈ 18 g sur le nez", "Fabriquée à Montréal"],
-    accent: true,
-  },
-];
+// Phases FR/EN centralisées dans lib/i18n.ts (SCROLL_THREAD_COPY).
 
 // Fenêtres d'opacité par phase (apparition/maintien/disparition).
 const WINDOWS: [number, number, number, number][] = [
@@ -59,7 +34,14 @@ const WINDOWS: [number, number, number, number][] = [
   [0.83, 0.9, 1, 1],
 ];
 
-export function ScrollThread({ modelUrl }: { modelUrl?: string }) {
+export function ScrollThread({
+  modelUrl,
+  locale = "fr",
+}: {
+  modelUrl?: string;
+  locale?: Locale;
+}) {
+  const PHASES = SCROLL_THREAD_COPY[locale].phases;
   const ref = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
@@ -126,7 +108,7 @@ export function ScrollThread({ modelUrl }: { modelUrl?: string }) {
           <div className="h-px w-40 overflow-hidden bg-white/12">
             <motion.div style={{ scaleX: scrollYProgress }} className="h-full origin-left bg-accent-blue" />
           </div>
-          <span className="text-xs uppercase tracking-[0.3em] text-muted">Défilez</span>
+          <span className="text-xs uppercase tracking-[0.3em] text-muted">{t("scroll.hint", locale)}</span>
         </div>
       </div>
     </section>

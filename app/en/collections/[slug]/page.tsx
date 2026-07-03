@@ -12,28 +12,32 @@ import { getCollection, getProducts } from "@/lib/catalog";
 import { buildMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
-// ISR : contenu servi en cache et régénéré au plus toutes les 5 min
-// (les mutations admin déclenchent une revalidation immédiate).
+// ISR : même politique que /collections/[slug] (5 min).
 export const revalidate = 300;
 
+/**
+ * Piliers éditoriaux EN par collection. Les noms de collections (MODUL'AIR,
+ * GENERATIVE, HYBRIDE), taglines et descriptions DB restent tels quels
+ * (noms et voix de marque) ; seul le chrome autour est traduit.
+ */
 const COLLECTION_PILLARS: Record<string, string[]> = {
   modulair: [
-    "Faces, branches et verres interchangeables",
-    "Combinaisons et évolutions illimitées",
-    "Réparation plutôt que remplacement",
-    "Personnalisation rapide en atelier",
+    "Interchangeable fronts, temples and lenses",
+    "Unlimited combinations and upgrades",
+    "Repair instead of replace",
+    "Fast personalization in the workshop",
   ],
   generative: [
-    "Géométries issues du design génératif et de l’IA",
-    "Silhouettes sculpturales et distinctives",
-    "Structures impossibles à mouler",
-    "Co-création design humain × algorithme",
+    "Geometries born from generative design and AI",
+    "Sculptural, distinctive silhouettes",
+    "Structures impossible to mould",
+    "Human design × algorithm co-creation",
   ],
   hybride: [
-    "Fabrication additive + finition artisanale",
-    "Matériaux contrastés et détails premium",
-    "Sophistication discrète",
-    "Innovation au service de la matière",
+    "Additive manufacturing + artisanal finishing",
+    "Contrasting materials and premium details",
+    "Quiet sophistication",
+    "Innovation in the service of the material",
   ],
 };
 
@@ -43,16 +47,17 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const collection = await getCollection(params.slug);
-  if (!collection) return buildMetadata({ title: "Collection" });
+  if (!collection) return buildMetadata({ title: "Collection", locale: "en" });
   return buildMetadata({
-    title: collection.seoTitle ?? collection.name,
+    title: `${collection.name} — 3D-printed eyewear collection`,
     description: collection.seoDescription ?? collection.description ?? undefined,
-    path: `/collections/${collection.slug}`,
-    alternate: `/en/collections/${collection.slug}`,
+    path: `/en/collections/${collection.slug}`,
+    locale: "en",
+    alternate: `/collections/${collection.slug}`,
   });
 }
 
-export default async function CollectionPage({
+export default async function EnglishCollectionPage({
   params,
 }: {
   params: { slug: string };
@@ -92,7 +97,7 @@ export default async function CollectionPage({
           <div className="container">
             <RevealImage
               src={collection.image}
-              alt={`Collection ${collection.name}`}
+              alt={`${collection.name} collection`}
               className="aspect-[16/8] rounded-3xl"
               sizes="(max-width: 1320px) 100vw, 1320px"
               priority
@@ -126,17 +131,17 @@ export default async function CollectionPage({
             <FadeIn>
               <div className="section-dark flex flex-col items-start gap-5 rounded-3xl border border-border p-8 md:flex-row md:items-center md:justify-between md:p-12">
                 <div>
-                  <p className="eyebrow mb-2">Système modulaire</p>
-                  <h2 className="font-display text-display-md font-bold">Moduler mes lunettes</h2>
+                  <p className="eyebrow mb-2">Modular system</p>
+                  <h2 className="font-display text-display-md font-bold">Modulate my glasses</h2>
                   <p className="mt-3 max-w-xl text-muted">
-                    Composez votre monture pièce par pièce — face, branches,
-                    couleurs, verres, finition — avec aperçu en direct, essayage
-                    AR et portrait porté.
+                    Compose your frame piece by piece — front, temples,
+                    colours, lenses, finish — with live preview, AR try-on
+                    and a worn portrait.
                   </p>
                 </div>
                 <Link href="/personnalisation/modulair">
                   <Button variant="light" size="lg" className="gap-2">
-                    <Sparkles className="h-4 w-4" /> Ouvrir le configurateur
+                    <Sparkles className="h-4 w-4" /> Open the configurator
                   </Button>
                 </Link>
               </div>
@@ -149,21 +154,21 @@ export default async function CollectionPage({
         <div className="container">
           <div className="mb-10 flex items-end justify-between">
             <h2 className="font-display text-display-md font-bold">
-              Les modèles
+              The models
             </h2>
             <Link href="/personnalisation" className="hidden sm:block">
               <Button variant="outline" className="gap-2">
-                <Sparkles className="h-4 w-4" /> Personnaliser
+                <Sparkles className="h-4 w-4" /> Customize
               </Button>
             </Link>
           </div>
-          <ProductGrid products={products} />
+          <ProductGrid products={products} locale="en" />
         </div>
       </section>
 
       <CTASection
-        title="Partez de cette collection. Arrivez à votre monture."
-        button="Commencer la personnalisation"
+        title="Start from this collection. Arrive at your own frame."
+        button="Start customizing"
       />
     </>
   );

@@ -1,33 +1,30 @@
 import { FadeIn } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
 import { CTASection } from "@/components/sections/cta-section";
-import { getContent } from "@/lib/catalog";
+import { EN_CONTENT } from "@/lib/i18n";
 import { buildMetadata } from "@/lib/seo";
 
+// Même politique de rendu que /manifeste.
 export const dynamic = "force-dynamic";
 
 export const metadata = buildMetadata({
-  title: "Manifeste",
+  title: "Manifesto",
   description:
-    "Le manifeste ADDITIVE : design numérique, fabrication additive, identité personnelle. Une nouvelle manière de concevoir, produire et porter un objet personnel.",
-  path: "/manifeste",
-  alternate: "/en/manifesto",
+    "The ADDITIVE manifesto: digital design, additive manufacturing, personal identity. A new way to design, produce and wear a personal object.",
+  path: "/en/manifesto",
+  locale: "en",
+  alternate: "/manifeste",
 });
 
-export default async function ManifestoPage() {
-  const manifesto = await getContent<{
-    title: string;
-    intro: string;
-    sections: { title: string; body: string }[];
-    closing: string;
-  }>("manifesto");
+export default function EnglishManifestoPage() {
+  const manifesto = EN_CONTENT.manifesto;
 
   return (
     <>
       <section className="section-dark pb-14 pt-28 md:pt-32">
         <div className="container">
           <FadeIn>
-            <p className="eyebrow mb-6">Manifeste</p>
+            <p className="eyebrow mb-6">Manifesto</p>
           </FadeIn>
           <AnimatedText
             text={manifesto.intro}
@@ -59,7 +56,7 @@ export default async function ManifestoPage() {
         </div>
       </section>
 
-      <CTASection title={manifesto.closing} button="Commencer" />
+      <CTASection title={manifesto.closing} button="Begin" />
     </>
   );
 }

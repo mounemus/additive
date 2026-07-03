@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { Locale } from "@/lib/i18n";
 
 export const SITE_NAME = "ADDITIVE";
 
@@ -37,18 +38,23 @@ export function organizationJsonLd() {
 }
 
 /** JSON-LD Product pour les fiches produit (offers seulement si prix connu). */
-export function productJsonLd(product: {
-  name: string;
-  slug: string;
-  description?: string | null;
-  shortDescription?: string | null;
-  image: string;
-  price: number | null;
-  currency: string;
-}) {
+export function productJsonLd(
+  product: {
+    name: string;
+    slug: string;
+    description?: string | null;
+    shortDescription?: string | null;
+    image: string;
+    price: number | null;
+    currency: string;
+  },
+  locale: Locale = "fr"
+) {
   const image = product.image.startsWith("http")
     ? product.image
     : `${SITE_URL}${product.image}`;
+  const productPath =
+    locale === "en" ? `/en/products/${product.slug}` : `/produits/${product.slug}`;
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -56,7 +62,7 @@ export function productJsonLd(product: {
     description:
       product.shortDescription ?? product.description ?? DEFAULT_DESCRIPTION,
     image,
-    url: `${SITE_URL}/produits/${product.slug}`,
+    url: `${SITE_URL}${productPath}`,
     brand: { "@type": "Brand", name: SITE_NAME },
     ...(product.price != null
       ? {
@@ -65,7 +71,7 @@ export function productJsonLd(product: {
             price: product.price,
             priceCurrency: product.currency || "CAD",
             availability: "https://schema.org/InStock",
-            url: `${SITE_URL}/produits/${product.slug}`,
+            url: `${SITE_URL}${productPath}`,
           },
         }
       : {}),
@@ -77,27 +83,46 @@ export function buildMetadata({
   description,
   path = "/",
   image,
+  locale = "fr",
+  alternate,
 }: {
   title?: string;
   description?: string;
   path?: string;
   image?: string;
+  /** Locale de la page (défaut "fr" — rendu FR historique inchangé). */
+  locale?: Locale;
+  /**
+   * Chemin de la même page dans l'autre langue (ex. "/en/collections" pour
+   * "/collections"). Génère les hreflang fr-CA/en-CA réciproques.
+   */
+  alternate?: string;
 }): Metadata {
   const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Lunettes imprimées en 3D, modulaires et personnalisées | Montréal`;
   const desc = description ?? DEFAULT_DESCRIPTION;
   const url = `${SITE_URL}${path}`;
 
+  const languages =
+    alternate != null
+      ? {
+          "fr-CA": locale === "fr" ? url : `${SITE_URL}${alternate}`,
+          "en-CA": locale === "en" ? url : `${SITE_URL}${alternate}`,
+          // Par défaut, la version française (racine) fait référence.
+          "x-default": locale === "fr" ? url : `${SITE_URL}${alternate}`,
+        }
+      : undefined;
+
   return {
     title: fullTitle,
     description: desc,
     metadataBase: new URL(SITE_URL),
-    alternates: { canonical: url },
+    alternates: { canonical: url, ...(languages ? { languages } : {}) },
     openGraph: {
       title: fullTitle,
       description: desc,
       url,
       siteName: SITE_NAME,
-      locale: "fr_CA",
+      locale: locale === "en" ? "en_CA" : "fr_CA",
       type: "website",
       ...(image ? { images: [{ url: image }] } : {}),
     },
