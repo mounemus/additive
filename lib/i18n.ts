@@ -199,6 +199,9 @@ type MatterBandCopy = {
   eyebrow: string;
   title: string;
   points: { title: string; body: string }[];
+  /** Indicateurs animés (compteurs) — laboratoire matière. */
+  stats: { value: number; prefix?: string; suffix: string; label: string }[];
+  layersNote: string;
 };
 
 export const MATTER_BAND_COPY: Record<Locale, MatterBandCopy> = {
@@ -210,6 +213,12 @@ export const MATTER_BAND_COPY: Record<Locale, MatterBandCopy> = {
       { title: "Souple et résistante", body: "Flexible, dotée d’une bonne mémoire de forme, elle encaisse le quotidien." },
       { title: "Produite à la demande", body: "Aucun stock, aucun invendu : chaque paire est imprimée après commande, à Montréal." },
     ],
+    stats: [
+      { value: 18, prefix: "≈ ", suffix: " g", label: "sur le nez" },
+      { value: 350, prefix: "≈ ", suffix: "", label: "couches frittées" },
+      { value: 0, suffix: "", label: "stock — imprimée après commande" },
+    ],
+    layersNote: "PA12 · FRITTAGE SÉLECTIF PAR LASER · COUCHE ≈ 0,1 MM",
   },
   en: {
     eyebrow: "The material",
@@ -219,6 +228,12 @@ export const MATTER_BAND_COPY: Record<Locale, MatterBandCopy> = {
       { title: "Flexible and resilient", body: "Flexible, with excellent shape memory, it shrugs off everyday wear." },
       { title: "Made on demand", body: "No stock, nothing unsold: every pair is printed after you order it, in Montréal." },
     ],
+    stats: [
+      { value: 18, prefix: "≈ ", suffix: " g", label: "on the nose" },
+      { value: 350, prefix: "≈ ", suffix: "", label: "sintered layers" },
+      { value: 0, suffix: "", label: "stock — printed after your order" },
+    ],
+    layersNote: "PA12 · SELECTIVE LASER SINTERING · LAYER ≈ 0.1 MM",
   },
 };
 
@@ -307,40 +322,69 @@ export const CUSTOMIZATION_STEPS_COPY: Record<Locale, CustomizationStepsCopy> = 
 
 type ScrollThreadCopy = {
   phases: {
+    /** Numéro de plan technique — « 01 » à « 06 ». */
+    n: string;
     eyebrow: string;
     title: string;
     sub: string;
     specs: [string, string];
+    /** Micro-annotation façon cartouche de plan (mono, bas de cadre). */
+    note: string;
     accent?: boolean;
   }[];
 };
 
+/** Narration 01-06 : VISAGE → PARAMÈTRES → DESIGN → IMPRESSION → FINITION → PORT. */
 export const SCROLL_THREAD_COPY: Record<Locale, ScrollThreadCopy> = {
   fr: {
     phases: [
       {
-        eyebrow: "01 — Conception",
-        title: "Conçue autour de vous.",
-        sub: "La géométrie s’adapte à vos mesures — pas l’inverse.",
-        specs: ["Design paramétrique", "Calibré au millimètre"],
+        n: "01",
+        eyebrow: "Visage",
+        title: "Tout part de votre visage.",
+        sub: "Largeur, pont, tempes : vos repères anatomiques deviennent le cahier des charges.",
+        specs: ["Repères anatomiques stables", "Calibré au millimètre"],
+        note: "REF. A-01 · SCAN MORPHOLOGIQUE",
       },
       {
-        eyebrow: "02 — Modularité",
-        title: "Une géométrie. Des modules.",
-        sub: "Face, branches et verres se composent et se remplacent.",
+        n: "02",
+        eyebrow: "Paramètres",
+        title: "Vos mesures pilotent la géométrie.",
+        sub: "Chaque modèle est un système de paramètres — pas un dessin figé.",
+        specs: ["Design paramétrique", "Géométrie adaptative"],
+        note: "REF. A-02 · SYSTÈME PARAMÉTRIQUE",
+      },
+      {
+        n: "03",
+        eyebrow: "Design",
+        title: "L’algorithme propose. Le designer décide.",
+        sub: "Face, branches et verres se composent en un objet cohérent — et modulaire.",
         specs: ["Modules interchangeables", "Réparable · évolutive"],
+        note: "REF. B-01 · ASSEMBLAGE MODULAIRE",
       },
       {
-        eyebrow: "03 — Fabrication",
+        n: "04",
+        eyebrow: "Impression",
         title: "Imprimée couche par couche.",
-        sub: "Frittage laser du nylon, sans moule ni stock.",
+        sub: "Frittage laser sélectif du nylon PA12 — sans moule, sans stock.",
         specs: ["Nylon PA12 — SLS", "≈ 350 couches"],
+        note: "REF. C-01 · FRITTAGE LASER",
       },
       {
-        eyebrow: "04 — Identité",
+        n: "05",
+        eyebrow: "Finition",
+        title: "Dépoudrée, teintée, contrôlée.",
+        sub: "Teinte dans la masse et finition vérifiée à la main, à Montréal.",
+        specs: ["Teinte dans la masse", "Contrôle à la main"],
+        note: "REF. C-02 · FINITION ATELIER",
+      },
+      {
+        n: "06",
+        eyebrow: "Port",
         title: "Conçues pour vous.",
-        sub: "Produite à la demande à Montréal — environ 18 g.",
+        sub: "Environ 18 g sur le nez — produite à la demande, portée longtemps.",
         specs: ["≈ 18 g sur le nez", "Fabriquée à Montréal"],
+        note: "REF. D-01 · PIÈCE UNIQUE",
         accent: true,
       },
     ],
@@ -348,32 +392,117 @@ export const SCROLL_THREAD_COPY: Record<Locale, ScrollThreadCopy> = {
   en: {
     phases: [
       {
-        eyebrow: "01 — Design",
-        title: "Designed around you.",
-        sub: "The geometry adapts to your measurements — not the other way around.",
-        specs: ["Parametric design", "Calibrated to the millimetre"],
+        n: "01",
+        eyebrow: "Face",
+        title: "It all starts with your face.",
+        sub: "Width, bridge, temples: your anatomical landmarks become the brief.",
+        specs: ["Stable anatomical landmarks", "Calibrated to the millimetre"],
+        note: "REF. A-01 · MORPHOLOGICAL SCAN",
       },
       {
-        eyebrow: "02 — Modularity",
-        title: "One geometry. Many modules.",
-        sub: "Front, temples and lenses combine, swap and evolve.",
+        n: "02",
+        eyebrow: "Parameters",
+        title: "Your measurements drive the geometry.",
+        sub: "Every model is a system of parameters — not a frozen drawing.",
+        specs: ["Parametric design", "Adaptive geometry"],
+        note: "REF. A-02 · PARAMETRIC SYSTEM",
+      },
+      {
+        n: "03",
+        eyebrow: "Design",
+        title: "The algorithm proposes. The designer decides.",
+        sub: "Front, temples and lenses compose one coherent — and modular — object.",
         specs: ["Interchangeable modules", "Repairable · upgradable"],
+        note: "REF. B-01 · MODULAR ASSEMBLY",
       },
       {
-        eyebrow: "03 — Fabrication",
+        n: "04",
+        eyebrow: "Printing",
         title: "Printed layer by layer.",
-        sub: "Laser-sintered nylon — no mould, no stock.",
+        sub: "Selective laser sintering of PA12 nylon — no mould, no stock.",
         specs: ["PA12 nylon — SLS", "≈ 350 layers"],
+        note: "REF. C-01 · LASER SINTERING",
       },
       {
-        eyebrow: "04 — Identity",
+        n: "05",
+        eyebrow: "Finishing",
+        title: "Depowdered, dyed, inspected.",
+        sub: "Dyed in the mass and hand-checked finishing, in Montréal.",
+        specs: ["Dyed in the mass", "Hand-checked"],
+        note: "REF. C-02 · WORKSHOP FINISH",
+      },
+      {
+        n: "06",
+        eyebrow: "Wear",
         title: "Made for you.",
-        sub: "Produced on demand in Montréal — around 18 g.",
+        sub: "Around 18 g on the nose — produced on demand, worn for years.",
         specs: ["≈ 18 g on the nose", "Made in Montréal"],
+        note: "REF. D-01 · ONE-OFF PIECE",
         accent: true,
       },
     ],
   },
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Modularité (MODUL'AIR) — vue éclatée annotée                               */
+/* -------------------------------------------------------------------------- */
+
+type ModulairCopy = {
+  eyebrow: string;
+  title: string;
+  paragraph: string;
+  cta: string;
+  modules: { n: string; title: string; body: string }[];
+  videoNote: string;
+};
+
+export const MODULAIR_COPY: Record<Locale, ModulairCopy> = {
+  fr: {
+    eyebrow: "MODUL'AIR — Système modulaire",
+    title: "Un système. Pas un objet figé.",
+    paragraph:
+      "Dans la collection MODUL'AIR, la monture est une architecture : face, branches et verres s’assemblent, se remplacent et évoluent — sans racheter la paire.",
+    cta: "Explorer MODUL'AIR",
+    modules: [
+      { n: "M-01", title: "Face avant", body: "La structure porteuse — géométrie ajustée à votre pont et à votre largeur de visage." },
+      { n: "M-02", title: "Branches", body: "Longueur et courbure adaptées à vos tempes. Remplaçables à l’unité." },
+      { n: "M-03", title: "Verres", body: "Sans correction, correcteurs ou solaires — clipsés dans la même face." },
+    ],
+    videoNote: "VUE ÉCLATÉE · ASSEMBLAGE SANS VIS",
+  },
+  en: {
+    eyebrow: "MODUL'AIR — Modular system",
+    title: "A system. Not a frozen object.",
+    paragraph:
+      "In the MODUL'AIR collection, the frame is an architecture: front, temples and lenses assemble, swap and evolve — without buying the pair again.",
+    cta: "Explore MODUL'AIR",
+    modules: [
+      { n: "M-01", title: "Front", body: "The load-bearing structure — geometry tuned to your bridge and face width." },
+      { n: "M-02", title: "Temples", body: "Length and curvature fitted to your temples. Replaceable one by one." },
+      { n: "M-03", title: "Lenses", body: "Plano, prescription or sun — clipped into the same front." },
+    ],
+    videoNote: "EXPLODED VIEW · SCREWLESS ASSEMBLY",
+  },
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Hero — colonne méta (composition asymétrique)                              */
+/* -------------------------------------------------------------------------- */
+
+export const HERO_META_COPY: Record<Locale, { label: string; value: string }[]> = {
+  fr: [
+    { label: "Atelier", value: "Montréal — QC" },
+    { label: "Matière", value: "Nylon PA12 · SLS" },
+    { label: "Poids", value: "≈ 18 g" },
+    { label: "Production", value: "À la demande" },
+  ],
+  en: [
+    { label: "Workshop", value: "Montréal — QC" },
+    { label: "Material", value: "PA12 nylon · SLS" },
+    { label: "Weight", value: "≈ 18 g" },
+    { label: "Production", value: "On demand" },
+  ],
 };
 
 /* -------------------------------------------------------------------------- */

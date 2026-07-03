@@ -2,13 +2,35 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ColorDots } from "@/components/product/color-dots";
 import { formatPrice } from "@/lib/utils";
 import type { CatalogProduct } from "@/lib/catalog";
 import type { Locale } from "@/lib/i18n";
+
+const CTA = { fr: "Voir le modèle", en: "View the model" } as const;
+
+/**
+ * Badges techniques discrets dérivés des matériaux/caractéristiques
+ * (PA12 · SLS · Custom fit) — au plus trois, jamais inventés.
+ */
+function techBadges(product: CatalogProduct, locale: Locale): string[] {
+  const haystack = [...product.materials, ...product.features]
+    .join(" ")
+    .toLowerCase();
+  const out: string[] = [];
+  if (haystack.includes("pa12") || haystack.includes("pa 12")) out.push("PA12");
+  if (haystack.includes("sls") || haystack.includes("fritt") || haystack.includes("sinter"))
+    out.push("SLS");
+  if (
+    haystack.includes("mesure") ||
+    haystack.includes("custom") ||
+    haystack.includes("fit")
+  )
+    out.push(locale === "en" ? "Custom fit" : "Sur mesure");
+  return out.slice(0, 3);
+}
 
 export function ProductCard({
   product,
@@ -19,26 +41,19 @@ export function ProductCard({
 }) {
   const href =
     locale === "en" ? `/en/products/${product.slug}` : `/produits/${product.slug}`;
+  const badges = techBadges(product, locale);
+
   return (
-    <motion.article
-      whileHover="hover"
-      className="group relative overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow duration-500 hover:shadow-card-hover"
-    >
-      <Link href={href} className="block">
+    <article className="group relative overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-card-hover motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+      <Link href={href} className="focus-ring block rounded-2xl">
         <div className="relative aspect-[4/3] overflow-hidden bg-[#0a0a0a]">
-          <motion.div
-            variants={{ hover: { scale: 1.06 } }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="relative h-full w-full"
-          >
-            <Image
-              src={product.image}
-              alt={product.images[0]?.alt ?? product.name}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className="object-cover"
-            />
-          </motion.div>
+          <Image
+            src={product.image}
+            alt={product.images[0]?.alt ?? product.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.04] group-focus-visible:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          />
           {product.collection && (
             <Badge
               variant="muted"
@@ -47,15 +62,15 @@ export function ProductCard({
               {product.collection.name}
             </Badge>
           )}
-          <motion.div
-            variants={{ hover: { opacity: 1, y: 0 } }}
-            initial={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.35 }}
-            className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-black"
+
+          {/* CTA « Voir le modèle » : apparaît au survol / focus clavier. */}
+          <span
             aria-hidden
+            className="absolute bottom-4 left-4 inline-flex translate-y-2 items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-medium text-black opacity-0 shadow-card transition-[opacity,transform] duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 motion-reduce:transition-none"
           >
-            <ArrowUpRight className="h-4 w-4" />
-          </motion.div>
+            {CTA[locale]}
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </span>
         </div>
 
         <div className="flex items-start justify-between gap-4 p-5">
@@ -66,13 +81,18 @@ export function ProductCard({
                 {product.shortDescription}
               </p>
             )}
+            {badges.length > 0 && (
+              <p className="mt-2.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+                {badges.join(" · ")}
+              </p>
+            )}
             <ColorDots colors={product.colors} className="mt-3" />
           </div>
-          <p className="shrink-0 text-sm font-medium">
+          <p className="shrink-0 text-sm font-medium tabular-nums">
             {formatPrice(product.price, product.currency)}
           </p>
         </div>
       </Link>
-    </motion.article>
+    </article>
   );
 }

@@ -4,8 +4,24 @@
     {
       "name": "additive-prod",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "start", "-p", "3789"],
+      "runtimeArgs": [
+        "next",
+        "start",
+        "-p",
+        "3789"
+      ],
       "port": 3789
+    },
+    {
+      "name": "additive-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "next",
+        "dev",
+        "-p",
+        "3790"
+      ],
+      "port": 3790
     }
   ]
 }

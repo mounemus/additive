@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetails } from "@/components/product/product-details";
-import { Model3DViewer } from "@/components/product/model-3d-viewer";
 import { ModulairVideo } from "@/components/configurator/modulair-video";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -79,30 +78,19 @@ export default async function ProductPage({
       <section className="pb-14 pt-28 md:pt-32">
         <div className="container grid gap-12 lg:grid-cols-[1.15fr_1fr]">
           <FadeIn y={16}>
-            <ProductGallery images={product.images} name={product.name} />
+            {/* Le visualiseur 3D navigable est l'onglet principal de la
+                galerie dès qu'un modèle existe (photos en miniatures). */}
+            <ProductGallery
+              images={product.images}
+              name={product.name}
+              model3dUrl={product.model3dUrl}
+            />
           </FadeIn>
           <FadeIn y={16} delay={0.1}>
             <ProductDetails product={product} />
           </FadeIn>
         </div>
       </section>
-
-      {product.model3dUrl && (
-        <section className="border-t border-border py-12">
-          <div className="container">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="font-display text-display-md font-bold">Vue 3D</h2>
-              <p className="text-sm text-muted">Faites pivoter, zoomez, explorez la monture sous tous les angles.</p>
-            </div>
-            <Model3DViewer
-              src={product.model3dUrl}
-              alt={`${product.name} — modèle 3D`}
-              poster={product.image}
-              className="aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border"
-            />
-          </div>
-        </section>
-      )}
 
       {product.description && (
         <section className="border-t border-border py-14">

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { HeroSection } from "@/components/sections/hero-section";
 import { Marquee } from "@/components/sections/marquee";
-import { CollectionCard } from "@/components/product/collection-card";
+import { CollectionsShowcase } from "@/components/sections/collections-showcase";
+import { ModulairSection } from "@/components/sections/modulair-section";
 import { ProductGrid } from "@/components/product/product-grid";
 import { CustomizationSteps } from "@/components/sections/customization-steps";
 import { TechnologySection } from "@/components/sections/technology-section";
@@ -48,18 +49,31 @@ export default async function EnglishHomePage() {
         locale="en"
       />
 
-      <Marquee items={[...EN_CONTENT.marquee]} />
+      {/* Marquee technique resserré — specs réelles, pause au survol */}
+      <Marquee
+        items={[
+          "PA12 nylon · SLS",
+          "≈ 18 g on the nose",
+          "3D-printed in Montréal",
+          "Parametric design",
+          "Morphological fit",
+          "Made on demand",
+        ]}
+      />
 
-      {/* 2. Fil rouge 3D piloté au scroll */}
+      {/* 2. Fil rouge 3D piloté au scroll — narration 01→06 (face → wear) */}
       <ScrollThread modelUrl={media.scrollModel} locale="en" />
 
       {/* 3. Positionnement — « Your face was never standard » */}
       <ManifestoBand locale="en" />
 
-      {/* 4. Découverte produit : collections + silhouettes vedettes */}
-      <section className="py-14 md:py-20">
+      {/* 4. Modularité MODUL'AIR — vue éclatée annotée + assemblage */}
+      <ModulairSection videoSrc={media.modulairVideo} locale="en" />
+
+      {/* 5. Découverte produit : collections + silhouettes vedettes */}
+      <section className="py-12 md:py-16">
         <div className="container">
-          <div className="mb-12 flex items-end justify-between gap-6">
+          <div className="mb-10 flex items-end justify-between gap-6">
             <div>
               <FadeIn>
                 <p className="eyebrow mb-4">Collections</p>
@@ -77,13 +91,9 @@ export default async function EnglishHomePage() {
               </Link>
             </FadeIn>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {collections.map((c, i) => (
-              <CollectionCard key={c.slug} collection={c} index={i} locale="en" />
-            ))}
-          </div>
+          <CollectionsShowcase collections={collections} locale="en" />
 
-          <div className="mb-10 mt-20 flex items-end justify-between gap-6">
+          <div className="mb-10 mt-16 flex items-end justify-between gap-6">
             <div>
               <FadeIn>
                 <p className="eyebrow mb-4">Featured models</p>
@@ -105,19 +115,19 @@ export default async function EnglishHomePage() {
         </div>
       </section>
 
-      {/* 5. Comment c'est fait — SCAN → DESIGN → PRINT → FINISH → WEAR */}
+      {/* 6. Comment c'est fait — SCAN → DESIGN → PRINT → FINISH → WEAR */}
       <ProcessSequence videoSrc={media.processVideo} locale="en" />
 
-      {/* 6. La matière — nylon PA12 */}
+      {/* 7. La matière — nylon PA12 : couches, macro, compteurs */}
       <MatterBand locale="en" />
 
-      {/* 7. La technologie */}
+      {/* 8. La technologie */}
       <TechnologySection content={EN_CONTENT.technology} compact locale="en" />
 
-      {/* 8. Personnalisation — le parcours, juste avant la conversion */}
+      {/* 9. Personnalisation — le parcours, juste avant la conversion */}
       <CustomizationSteps compact locale="en" />
 
-      {/* 9. CTA final — ancrage sombre + monture 3D éclatée en arrière-plan */}
+      {/* 10. CTA final — ancrage sombre + monture 3D éclatée en arrière-plan */}
       <CTASection
         title={EN_CONTENT.cta.title}
         button={EN_CONTENT.cta.button}

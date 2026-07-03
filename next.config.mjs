@@ -4,14 +4,21 @@
 // MediaPipe (cdn.jsdelivr.net + modèle sur storage.googleapis.com, WASM),
 // model-viewer (ajax.googleapis.com), images data:/blob: du configurateur,
 // caméra pour l'analyse faciale. Next.js exige inline scripts/styles.
+//
+// www.gstatic.com : les GLB du catalogue sont compressés Draco
+// (extensionsRequired: KHR_draco_mesh_compression) et <model-viewer>
+// télécharge son décodeur (draco_wasm_wrapper.js + draco_decoder.wasm)
+// depuis https://www.gstatic.com/draco/versioned/decoders/… — sans ces
+// hôtes dans script-src ET connect-src, le décodage échoue silencieusement
+// et la 3D reste invisible.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://ajax.googleapis.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://ajax.googleapis.com https://www.gstatic.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' data: blob: https://cdn.jsdelivr.net https://storage.googleapis.com",
+  "connect-src 'self' data: blob: https://cdn.jsdelivr.net https://storage.googleapis.com https://www.gstatic.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "frame-ancestors 'none'",
@@ -40,6 +47,15 @@ const nextConfig = {
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
+  },
+  webpack(config, { isServer }) {
+    if (!isServer) {
+      // lib/catalog.ts utilise fs.existsSync (mapping GLB local côté serveur)
+      // mais reste importé transitivement par un composant client via
+      // lib/site-config.ts → module vide côté navigateur, jamais appelé.
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false };
+    }
+    return config;
   },
 };
 

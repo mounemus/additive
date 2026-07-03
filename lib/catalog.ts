@@ -1,3 +1,6 @@
+// fs n'est utilisé que côté serveur (voir localModelUrl) ; le bundle client
+// reçoit un module vide grâce au fallback webpack de next.config.mjs.
+import fs from "fs";
 import { db } from "@/lib/db";
 import {
   COLLECTIONS,
@@ -55,6 +58,52 @@ function minPriceOf(prices: (number | null)[]): number | null {
   return nums.length ? Math.min(...nums) : null;
 }
 
+/**
+ * Nettoie les shortcodes WordPress hérités des descriptions importées
+ * (ex. `[3d_viewer id="3098"]`, `[gallery]…[/gallery]`) : balises ouvrantes,
+ * fermantes et auto-fermantes. Retourne null si le texte devient vide.
+ */
+const SHORTCODE_RE = /\[\/?[a-z0-9_]+[^\]]*\]/gi;
+
+export function stripShortcodes(text: string | null): string | null {
+  if (!text) return text;
+  const cleaned = text
+    .replace(SHORTCODE_RE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return cleaned.length ? cleaned : null;
+}
+
+/**
+ * Mapping automatique d'un modèle 3D local : si `public/models/<slug>.glb`
+ * existe, on l'utilise pour les produits sans model3dUrl en base.
+ * Vérification fs côté serveur uniquement, mémoïsée par slug.
+ */
+const localModelCache = new Map<string, string | null>();
+
+function localModelUrl(slug: string): string | null {
+  if (typeof window !== "undefined") return null;
+  const cached = localModelCache.get(slug);
+  if (cached !== undefined) return cached;
+  let url: string | null = null;
+  // Slug strictement alphanumérique/tirets : évite toute traversée de chemin.
+  if (/^[a-z0-9][a-z0-9-]*$/i.test(slug)) {
+    try {
+      if (
+        typeof fs?.existsSync === "function" &&
+        fs.existsSync(`${process.cwd()}/public/models/${slug}.glb`)
+      ) {
+        url = `/models/${slug}.glb`;
+      }
+    } catch {
+      url = null;
+    }
+  }
+  localModelCache.set(slug, url);
+  return url;
+}
+
 function staticCollectionToCatalog(c: StaticCollection): CatalogCollection {
   return {
     id: `static-${c.slug}`,
@@ -77,8 +126,8 @@ function staticProductToCatalog(p: StaticProduct): CatalogProduct {
     id: `static-${p.slug}`,
     name: p.name,
     slug: p.slug,
-    shortDescription: p.shortDescription,
-    description: p.description,
+    shortDescription: stripShortcodes(p.shortDescription),
+    description: stripShortcodes(p.description),
     price: p.price,
     currency: "CAD",
     colors: p.colors,
@@ -86,7 +135,7 @@ function staticProductToCatalog(p: StaticProduct): CatalogProduct {
     dimensions: p.dimensions,
     features: p.features,
     isFeatured: p.isFeatured,
-    model3dUrl: null,
+    model3dUrl: localModelUrl(p.slug),
     image: p.image,
     images: [{ url: p.image, alt: p.name }],
     collection: col ? { name: col.name, slug: col.slug } : null,
@@ -118,8 +167,8 @@ function dbProductToCatalog(p: {
     id: p.id,
     name: p.name,
     slug: p.slug,
-    shortDescription: p.shortDescription,
-    description: p.description,
+    shortDescription: stripShortcodes(p.shortDescription),
+    description: stripShortcodes(p.description),
     price: p.price,
     currency: p.currency,
     colors: p.colors,
@@ -127,7 +176,7 @@ function dbProductToCatalog(p: {
     dimensions: p.dimensions,
     features: p.features,
     isFeatured: p.isFeatured,
-    model3dUrl: p.model3dUrl,
+    model3dUrl: p.model3dUrl || localModelUrl(p.slug),
     image: p.images[0]?.url ?? "/images/products/placeholder.svg",
     images: p.images.map((i) => ({ url: i.url, alt: i.alt })),
     collection: p.collection,

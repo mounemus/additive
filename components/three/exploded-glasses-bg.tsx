@@ -4,6 +4,7 @@ import { Suspense, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment, Lightformer, AdaptiveDpr } from "@react-three/drei";
 import * as THREE from "three";
+import { applyNylonStudioMaterials, DRACO_DECODER_PATH } from "@/components/three/glasses-3d";
 
 const MODEL_URL = "/models/hybride.glb";
 
@@ -13,13 +14,18 @@ const MODEL_URL = "/models/hybride.glb";
  * puis revient, en rotation lente. R3F — à importer en ssr:false.
  */
 function ExplodedModel({ modelUrl }: { modelUrl: string }) {
-  const { scene } = useGLTF(modelUrl);
+  // Décodeur Draco auto-hébergé (la CSP bloque gstatic — voir glasses-3d.tsx).
+  const { scene } = useGLTF(modelUrl, DRACO_DECODER_PATH);
   const group = useRef<THREE.Group>(null);
 
   // Clone : useGLTF partage la scène en cache. Comme on mute les positions des
   // mailles à chaque frame (éclatement), il FAUT notre propre copie, sinon on
   // casse les autres rendus de ce modèle (ex. le fil rouge 3D).
-  const clone = useMemo(() => scene.clone(true), [scene]);
+  const clone = useMemo(() => {
+    const c = scene.clone(true);
+    applyNylonStudioMaterials(c); // nylon mat visible sur fond encre
+    return c;
+  }, [scene]);
 
   const data = useMemo(() => {
     const box = new THREE.Box3().setFromObject(clone);
@@ -84,4 +90,4 @@ export function ExplodedScene({ modelUrl = MODEL_URL }: { modelUrl?: string }) {
   );
 }
 
-useGLTF.preload(MODEL_URL);
+useGLTF.preload(MODEL_URL, DRACO_DECODER_PATH);

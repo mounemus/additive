@@ -87,6 +87,26 @@ html.dark {
   .eyebrow {
     @apply text-xs font-medium uppercase tracking-[0.25em] text-muted;
   }
+  /* Typographie monumentale du hero — au-delà de display-xl, jusqu'à ~8rem. */
+  .text-hero {
+    font-size: clamp(3rem, 8.5vw, 8rem);
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+  }
+  /* Numéro « fantôme » façon plan technique : contour seul, pas de remplissage. */
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(243, 242, 237, 0.16);
+  }
+  /* Scrim radial profond du hero (vignette) — lisibilité du titre sur vidéo. */
+  .hero-vignette {
+    background: radial-gradient(
+      120% 90% at 28% 42%,
+      transparent 30%,
+      rgba(0, 0, 0, 0.35) 62%,
+      rgba(0, 0, 0, 0.72) 100%
+    );
+  }
   .hairline {
     @apply h-px w-full bg-border;
   }
@@ -98,4 +118,15 @@ html.dark {
   .skip-link {
     @apply fixed left-4 top-4 z-[100] -translate-y-24 rounded-full bg-accent-blue px-5 py-3 text-sm font-medium text-white opacity-0 transition-transform focus-visible:translate-y-0 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground;
   }
+}
+
+/* --- Visualiseur 3D produit (<model-viewer>) — ajouts ------------------- */
+/* Poster transparent (l'image est gérée par le composant React) et barre
+   de progression aux couleurs de la marque. */
+model-viewer {
+  --poster-color: transparent;
+  --progress-bar-color: var(--accent-blue);
+  --progress-bar-height: 2px;
+  --progress-mask: transparent;
+  outline: none;
 }

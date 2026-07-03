@@ -22,7 +22,9 @@ export function Parallax({
   const y = useTransform(scrollYProgress, [0, 1], [amount, -amount]);
 
   return (
-    <div ref={ref} className={className}>
+    // `relative` : framer-motion exige une position non statique sur la cible
+    // de useScroll pour calculer l'offset (supprime le warning console).
+    <div ref={ref} className={`relative ${className ?? ""}`}>
       <motion.div style={reduce ? undefined : { y }}>{children}</motion.div>
     </div>
   );
