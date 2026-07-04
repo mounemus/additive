@@ -7,7 +7,8 @@ import { getFaceLandmarker } from "@/lib/face/mediapipe";
 import { demoFrameOverlaySvg } from "@/lib/ai/demo-visuals";
 
 // Façade neutre (gris foncé) en attendant la vraie monture — jamais orange.
-const NEUTRAL_FRAME = demoFrameOverlaySvg(["#e7e7e7", "#2b2b2b", "#111111"]);
+// Exportée : le mode « Sur photo » (product-tryon) l'utilise en repli aussi.
+export const NEUTRAL_FRAME = demoFrameOverlaySvg(["#e7e7e7", "#2b2b2b", "#111111"]);
 
 // Libellés internes FR/EN — cohérents avec la prop `locale` (défaut fr).
 const TRYON_STRINGS = {
@@ -18,6 +19,7 @@ const TRYON_STRINGS = {
     preparing: "Préparation de votre monture…",
     genericNotice: "Aperçu générique — la façade exacte du modèle est momentanément indisponible.",
     preparingConcept: "Préparation de la monture…",
+    faceHint: "Revenez face caméra",
   },
   en: {
     start: "Try on my face",
@@ -26,13 +28,145 @@ const TRYON_STRINGS = {
     preparing: "Preparing your frame…",
     genericNotice: "Generic preview — the exact frame for this model is momentarily unavailable.",
     preparingConcept: "Preparing the frame…",
+    faceHint: "Face the camera",
   },
 } as const;
+
+// ── Pose 3D (matrice de transformation faciale MediaPipe) ───────────────────
+
+export type PoseAngles = { yaw: number; pitch: number; roll: number };
+
+/**
+ * Extrait yaw/pitch/roll (radians) de la matrice de transformation faciale
+ * 4x4 COLONNE-MAJOR de MediaPipe (r_ij = d[j*4+i]), décomposition
+ * R = Ry(yaw)·Rx(pitch)·Rz(roll) en espace caméra (X droite, Y haut, Z vers
+ * la caméra). yaw > 0 = tête tournée vers la gauche du sujet.
+ */
+export function extractPose(matrixData: ArrayLike<number> | undefined | null): PoseAngles | null {
+  if (!matrixData || matrixData.length < 16) return null;
+  const d = matrixData;
+  const r10 = d[1];
+  const r11 = d[5];
+  const r02 = d[8];
+  const r12 = d[9];
+  const r22 = d[10];
+  return {
+    yaw: Math.atan2(r02, r22),
+    pitch: Math.asin(Math.max(-1, Math.min(1, -r12))),
+    roll: Math.atan2(r10, r11),
+  };
+}
+
+export type FrameAnchor = {
+  cx: number;
+  cy: number;
+  width: number;
+  /** Rotation (roll) à appliquer au canvas, en espace écran. */
+  angle: number;
+  /** Yaw en espace ÉCRAN (positif = visage pointant vers la droite écran). */
+  yaw: number;
+  pitch: number;
+};
+
+/**
+ * Ancrage de la façade : tempes (234/454) pour la largeur, pupilles (33/263)
+ * pour la hauteur — même math en live (miroir) et en photo statique.
+ * Si la pose 3D est disponible, le roll matrice remplace l'approximation
+ * tempes/yeux et yaw/pitch pilotent compression + décalage de la façade.
+ */
+export function computeFrameAnchor(
+  landmarks: Array<{ x: number; y: number }>,
+  W: number,
+  H: number,
+  mirror: boolean,
+  pose: PoseAngles | null
+): FrameAnchor {
+  const p = (i: number) =>
+    mirror
+      ? { x: W - landmarks[i].x * W, y: landmarks[i].y * H }
+      : { x: landmarks[i].x * W, y: landmarks[i].y * H };
+  const tA = p(234);
+  const tB = p(454);
+  const eL = p(33);
+  const eR = p(263);
+  const templeDist = Math.hypot(tB.x - tA.x, tB.y - tA.y);
+  // Légèrement plus large que l'écart des tempes : couvre les charnières.
+  const width = templeDist * 1.08;
+  const cx = (tA.x + tB.x) / 2;
+  // Les verres se centrent sur les PUPILLES : ancrage un peu SOUS la ligne
+  // des yeux (et non au niveau des sourcils).
+  const cy = (eL.y + eR.y) / 2 + templeDist * 0.04;
+  // Angle 2D de repli : moyenne des lignes TEMPES et YEUX, chacune ordonnée
+  // gauche→droite EN ESPACE ÉCRAN (sinon atan2 rend ±180° après miroir).
+  const lineAngle = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+    const left = p1.x <= p2.x ? p1 : p2;
+    const right = p1.x <= p2.x ? p2 : p1;
+    return Math.atan2(right.y - left.y, right.x - left.x);
+  };
+  const lmAngle = (lineAngle(tA, tB) + lineAngle(eL, eR)) / 2;
+  let angle = lmAngle;
+  let yaw = 0;
+  let pitch = 0;
+  if (pose) {
+    // Roll matrice — signe théorique : +roll en vue miroir, −roll sinon
+    // (Y monde vers le haut vs y écran vers le bas). Par sécurité, le signe
+    // est réconcilié avec l'angle 2D des landmarks (bonne approximation du
+    // roll réel) : insensible aux conventions d'axes du modèle.
+    const mr = mirror ? pose.roll : -pose.roll;
+    angle = Math.abs(mr - lmAngle) <= Math.abs(-mr - lmAngle) ? mr : -mr;
+    // Yaw écran : en miroir, tourner la tête vers SA gauche pointe le visage
+    // vers la gauche de l'écran → signe inversé par rapport à la matrice.
+    yaw = mirror ? -pose.yaw : pose.yaw;
+    pitch = pose.pitch;
+  }
+  return { cx, cy, width, angle, yaw, pitch };
+}
+
+/**
+ * Dessine la façade ancrée : réglages utilisateur (Largeur/Hauteur), pose 3D
+ * (compression cos(yaw)/cos(pitch), décalage vers où pointe le visage),
+ * ombre portée douce. Partagé entre le live et le mode photo statique.
+ */
+export function drawFrameOverlay(
+  ctx: CanvasRenderingContext2D,
+  frame: HTMLImageElement,
+  a: FrameAnchor,
+  adj: { w: number; h: number },
+  opacity = 1
+) {
+  const dw = a.width * (1 + adj.w / 200); // -50..50 → ±25 %
+  const dy = a.width * (adj.h / 400); // -50..50 → ± ~12 % de la largeur
+  const ratio = frame.naturalHeight / frame.naturalWidth;
+  const h = dw * ratio;
+  // Pose 3D : la façade suit la rotation de tête — compression horizontale
+  // cos(yaw) + décalage x proportionnel à sin(yaw), léger équivalent en pitch.
+  const scaleX = Math.max(0.35, Math.cos(a.yaw));
+  const scaleY = Math.max(0.5, Math.cos(a.pitch));
+  const dxYaw = Math.sin(a.yaw) * dw * 0.25;
+  const dyPitch = Math.sin(a.pitch) * dw * 0.1;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.translate(a.cx + dxYaw, a.cy + dy + dyPitch);
+  ctx.rotate(a.angle);
+  // Échelle APRÈS rotation : la compression suit l'axe propre de la façade.
+  ctx.scale(scaleX, scaleY);
+  // Ombre portée douce sur la façade seule : effet « posée sur le nez ».
+  ctx.shadowColor = "rgba(0,0,0,0.25)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 4;
+  ctx.drawImage(frame, -dw / 2, -h / 2, dw, h);
+  ctx.restore();
+}
+
+// Seuils du hint « Revenez face caméra » (hystérésis anti-clignotement).
+const YAW_HINT_ON_DEG = 28;
+const YAW_HINT_OFF_DEG = 24;
 
 /**
  * Essayage AR « Essayer sur mon visage » : la façade transparente du concept
  * (vrai PNG IA, détouré + rogné sur l'alpha) est ancrée en temps réel aux
  * tempes (234/454) et centrée sur les pupilles (33/263), vue miroir selfie.
+ * La pose 3D (matrice faciale) pilote rotation, compression et décalage.
  */
 export function FaceTryon({
   frameSrc,
@@ -76,6 +210,9 @@ export function FaceTryon({
 
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
   const [frameReady, setFrameReady] = useState(false);
+  // Hint « Revenez face caméra » quand |yaw| dépasse ~28° (façade estompée).
+  const [offAxis, setOffAxis] = useState(false);
+  const offAxisRef = useRef(false);
 
   const cleanup = useCallback(() => {
     runningRef.current = false;
@@ -143,6 +280,11 @@ export function FaceTryon({
         const landmarks = result?.faceLandmarks?.[0];
         const frame = frameImgRef.current;
         if (!landmarks) {
+          // Visage perdu : on retire le hint de pose (il n'a plus de sens).
+          if (offAxisRef.current) {
+            offAxisRef.current = false;
+            setOffAxis(false);
+          }
           noFaceRef.current += 1;
           if (noFaceRef.current >= 40 && !cpuTriedRef.current && !switchingRef.current) {
             cpuTriedRef.current = true;
@@ -157,56 +299,32 @@ export function FaceTryon({
           }
         } else if (frame) {
           noFaceRef.current = 0;
-          // Coordonnées en MIROIR (x → W - x) pour coller à la vidéo selfie.
-          const p = (i: number) => ({ x: W - landmarks[i].x * W, y: landmarks[i].y * H });
-          const tA = p(234);
-          const tB = p(454);
-          const eL = p(33);
-          const eR = p(263);
-          const templeDist = Math.hypot(tB.x - tA.x, tB.y - tA.y);
-          // Légèrement plus large que l'écart des tempes : couvre les charnières.
-          const targetW = templeDist * 1.08;
-          const cx = (tA.x + tB.x) / 2;
-          // Les verres se centrent sur les PUPILLES : ancrage un peu SOUS la
-          // ligne des yeux (et non au niveau des sourcils).
-          const cy = (eL.y + eR.y) / 2 + templeDist * 0.04;
-          // Angle (roll) : moyenne de la ligne des TEMPES et de la ligne des
-          // YEUX, chacune ORDONNÉE gauche→droite EN ESPACE ÉCRAN. Après le
-          // miroir, les paires s'inversent : sans cet ordre, atan2 rend ±180°
-          // (façade dessinée à l'envers) et le filtre devient instable au
-          // passage +π/−π (monture qui tournoie). Chaque angle reste borné
-          // ±90° ; la moyenne des deux lignes est plus stable en rotation
-          // légère que la seule ligne des tempes.
-          const lineAngle = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
-            const left = p1.x <= p2.x ? p1 : p2;
-            const right = p1.x <= p2.x ? p2 : p1;
-            return Math.atan2(right.y - left.y, right.x - left.x);
-          };
-          const a = (lineAngle(tA, tB) + lineAngle(eL, eR)) / 2;
+          // Ancrage partagé (miroir selfie) + pose 3D si la matrice est là.
+          const pose = extractPose(result?.facialTransformationMatrixes?.[0]?.data);
+          const raw = computeFrameAnchor(landmarks, W, H, true, pose);
 
-          // Filtre One-Euro : stable à l'arrêt, réactif en mouvement.
+          // Filtre One-Euro : stable à l'arrêt, réactif en mouvement
+          // (yaw/pitch lissés comme le reste).
           if (!filtersRef.current) filtersRef.current = makeFilters();
           const f = filtersRef.current;
-          const scx = f.cx(cx, ts);
-          const scy = f.cy(cy, ts);
-          const sw = f.w(targetW, ts);
-          const sa = f.a(a, ts);
+          const anchor: FrameAnchor = {
+            cx: f.cx(raw.cx, ts),
+            cy: f.cy(raw.cy, ts),
+            width: f.w(raw.width, ts),
+            angle: f.a(raw.angle, ts),
+            yaw: f.yaw(raw.yaw, ts),
+            pitch: f.pitch(raw.pitch, ts),
+          };
 
-          // Réglages utilisateur : échelle (Largeur) et offset vertical (Hauteur).
-          const adj = adjRef.current;
-          const dw = sw * (1 + adj.w / 200); // -50..50 → ±25 %
-          const dy = sw * (adj.h / 400); // -50..50 → ± ~12 % de la largeur
-          const ratio = frame.naturalHeight / frame.naturalWidth;
-          const h = dw * ratio;
-          ctx.save();
-          ctx.translate(scx, scy + dy);
-          ctx.rotate(sa);
-          // Ombre portée douce sur la façade seule : effet « posée sur le nez ».
-          ctx.shadowColor = "rgba(0,0,0,0.25)";
-          ctx.shadowBlur = 8;
-          ctx.shadowOffsetY = 4;
-          ctx.drawImage(frame, -dw / 2, -h / 2, dw, h);
-          ctx.restore();
+          // Hint « Revenez face caméra » (hystérésis 28°/24°) + façade estompée.
+          const yawDeg = Math.abs(anchor.yaw) * (180 / Math.PI);
+          const off = offAxisRef.current ? yawDeg > YAW_HINT_OFF_DEG : yawDeg > YAW_HINT_ON_DEG;
+          if (off !== offAxisRef.current) {
+            offAxisRef.current = off;
+            setOffAxis(off);
+          }
+
+          drawFrameOverlay(ctx, frame, anchor, adjRef.current, off ? 0.3 : 1);
         }
       }
     }
@@ -282,6 +400,13 @@ export function FaceTryon({
             </span>
           </div>
         )}
+        {status === "live" && offAxis && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+            <span className="rounded-full bg-black/70 px-4 py-2 text-sm font-medium text-white backdrop-blur">
+              {s.faceHint}
+            </span>
+          </div>
+        )}
       </div>
       <div className="mt-5 flex flex-wrap justify-center gap-3">
         {status !== "live" ? (
@@ -339,11 +464,14 @@ function makeFilters() {
     cy: oneEuro(2.2, 0.5),
     w: oneEuro(1.0, 0.35),
     a: oneEuro(1.0, 0.5),
+    // Pose 3D : lissage un peu plus ferme (les angles matrice sont bruités).
+    yaw: oneEuro(1.2, 0.5),
+    pitch: oneEuro(1.2, 0.5),
   };
 }
 
 // ── Préparation de la façade : détourage blanc + rognage alpha ───────────────
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
@@ -353,7 +481,50 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function prepareFrame(
+/**
+ * Élimine le halo blanc résiduel autour de la façade détourée :
+ * 1) ÉROSION 1 px de l'alpha (chaque pixel prend le min de son voisinage en
+ *    croix — la frange extérieure d'un pixel disparaît) ;
+ * 2) DÉFRANGE : un pixel encore semi-transparent nettement plus CLAIR que ses
+ *    voisins opaques est un reste de fond blanc → alpha 0.
+ */
+function erodeAndDefringe(px: Uint8ClampedArray, w: number, h: number) {
+  // Copie de l'alpha : l'érosion lit l'état d'origine, pas ses propres écrits.
+  const alpha = new Uint8ClampedArray(w * h);
+  for (let i = 0; i < w * h; i += 1) alpha[i] = px[i * 4 + 3];
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      const i = y * w + x;
+      let m = alpha[i];
+      if (m === 0) continue;
+      m = Math.min(m, x > 0 ? alpha[i - 1] : 0);
+      m = Math.min(m, x < w - 1 ? alpha[i + 1] : 0);
+      m = Math.min(m, y > 0 ? alpha[i - w] : 0);
+      m = Math.min(m, y < h - 1 ? alpha[i + w] : 0);
+      px[i * 4 + 3] = m;
+    }
+  }
+  const luma = (i: number) => 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) {
+      const i = y * w + x;
+      const a = px[i * 4 + 3];
+      if (a === 0 || a >= 250) continue;
+      // Luminance max des voisins OPAQUES : référence de la couleur monture.
+      let ref = -1;
+      const neighbors = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1];
+      for (const j of neighbors) {
+        if (j >= 0 && px[j * 4 + 3] >= 200) {
+          const l = luma(j);
+          if (l > ref) ref = l;
+        }
+      }
+      if (ref >= 0 && luma(i) > ref + 18) px[i * 4 + 3] = 0;
+    }
+  }
+}
+
+export async function prepareFrame(
   src: string,
   bg: "transparent" | "white" | undefined
 ): Promise<HTMLImageElement | null> {
@@ -382,6 +553,10 @@ async function prepareFrame(
         if (min > 205 && max - min < 26) px[i + 3] = 0;
       }
     }
+    // Après le knockout (ou l'alpha natif) : érosion 1 px + défrange, pour
+    // supprimer le halo blanc résiduel en bordure de façade.
+    erodeAndDefringe(px, w, h);
+    ctx.putImageData(data, 0, 0);
     let minX = w, minY = h, maxX = 0, maxY = 0, found = false;
     for (let y = 0; y < h; y += 1) {
       for (let x = 0; x < w; x += 1) {
@@ -394,7 +569,6 @@ async function prepareFrame(
         }
       }
     }
-    if (bg === "white") ctx.putImageData(data, 0, 0);
     if (!found) return img;
     const bw = maxX - minX + 1;
     const bh = maxY - minY + 1;

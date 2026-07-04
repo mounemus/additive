@@ -457,9 +457,10 @@ export function buildWornPortraitPromptFr(
 
 /**
  * Prompt façade transparente pour l'essayage AR : la FACE de la monture avec
- * les amorces de charnières et un léger départ de branches (rendu moins
- * tronqué qu'une coupe nette), cadrage bord à bord (l'overlay est ensuite
- * rogné sur l'alpha et ancré aux landmarks).
+ * des charnières discrètes (les « départs de branches » généraient des
+ * artefacts — retirés en v4), plaquettes/pont de la même couleur que la
+ * monture (aucun élément blanc parasite), cadrage bord à bord (l'overlay est
+ * ensuite rogné sur l'alpha et ancré aux landmarks).
  */
 export function buildFrameOverlayPromptFr(
   concept: Concept,
@@ -475,11 +476,12 @@ export function buildFrameOverlayPromptFr(
   const material = product?.materials?.length ? product.materials.join(", ") : pal.material;
   return [
     "Vue strictement de face de la façade d'une monture de lunettes",
-    `imprimée en 3D « ${concept.label} » (façade avec les amorces de charnières`,
-    "et 1 cm de départ de branches visibles de face, perspective frontale —",
-    "montrer la face avant avec les deux cercles, le pont et ces courts départs de branches).",
+    `imprimée en 3D « ${concept.label} » (face avant complète : les deux cercles,`,
+    "le pont et des charnières discrètes aux extrémités — pas de branches).",
     concept.summary,
     `Matière ${material}, couleur ${colors} — respecte scrupuleusement cette couleur.`,
+    "Plaquettes de nez et pont de la MÊME couleur que la monture, aucun élément blanc,",
+    "pas de support ni tige sous le pont.",
     "Cadrage serré bord à bord, monture centrée et horizontale, occupant toute la largeur,",
     "verres transparents (pas de reflet opaque), aucune ombre portée, aucun visage.",
   ].join(" ");

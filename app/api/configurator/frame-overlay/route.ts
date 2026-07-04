@@ -80,10 +80,10 @@ export async function POST(req: Request) {
 
   // Cache : même concept + même CONTENU d'image de référence = même façade.
   // Valeur stockée = `<bg>|<url>` (le type de fond doit survivre au cache).
-  // "v3" = version du prompt façade (amorces de charnières + départ de
-  // branches) : invalide les façades « coupées net » générées avant.
+  // "v4" = prompt façade sans départs de branches + plaquettes/pont de la
+  // même couleur que la monture : invalide les façades avec artefacts blancs.
   const cacheKey = makeCacheKey("frameOverlay", [
-    "v3",
+    "v4",
     parsed.data.conceptLabel,
     [...styleTags].sort(),
     refHash,

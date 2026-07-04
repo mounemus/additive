@@ -3,14 +3,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, ImageDown, Loader2, RotateCcw, Sparkles, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FaceTryon } from "@/components/configurator/face-tryon";
+import {
+  FaceTryon,
+  NEUTRAL_FRAME,
+  computeFrameAnchor,
+  drawFrameOverlay,
+  extractPose,
+  loadImage,
+  prepareFrame,
+  type PoseAngles,
+} from "@/components/configurator/face-tryon";
+import { getImageLandmarker } from "@/lib/face/mediapipe";
 import type { CatalogProduct } from "@/lib/catalog";
 import type { Locale } from "@/lib/i18n";
 
 /**
- * Essayage virtuel en direct sur fiche produit (façon Zenni/Fittingbox) :
+ * Essayage virtuel sur fiche produit (façon Zenni/Fittingbox) :
  * bouton « Essayer sur mon visage » → modale plein écran en 2 étapes
- * (consentement explicite, puis caméra + ancrage MediaPipe via FaceTryon).
+ * (consentement explicite, puis deux onglets : « En direct » — caméra +
+ * ancrage MediaPipe via FaceTryon — et « Sur photo » — photo téléversée,
+ * détection unique et façade ancrée dans un canvas statique).
  * La façade transparente du produit est générée par /api/configurator/
  * frame-overlay et mémorisée par produit dans sessionStorage.
  */
@@ -38,6 +50,14 @@ const STRINGS = {
     width: "Largeur",
     height: "Hauteur",
     adjustHint: "Ajustez si besoin — vue miroir",
+    adjustHintPhoto: "Ajustez si besoin",
+    tabLive: "En direct",
+    tabPhoto: "Sur photo",
+    photoIntro: "Téléversez une photo de face, bien éclairée, pour essayer la monture.",
+    changePhoto: "Changer de photo",
+    analyzing: "Analyse de la photo…",
+    noFace: "Aucun visage détecté — essayez une photo de face, bien éclairée.",
+    photoAlt: "Essayage de la monture sur votre photo",
     uploadPhoto: "Téléverser une photo",
     uploadedAlt: "Votre photo téléversée",
     portraitTitle: "Votre portrait porté",
@@ -74,6 +94,14 @@ const STRINGS = {
     width: "Width",
     height: "Height",
     adjustHint: "Adjust if needed — mirror view",
+    adjustHintPhoto: "Adjust if needed",
+    tabLive: "Live",
+    tabPhoto: "On photo",
+    photoIntro: "Upload a well-lit, front-facing photo to try the frame on.",
+    changePhoto: "Change photo",
+    analyzing: "Analyzing your photo…",
+    noFace: "No face detected — try a well-lit, front-facing photo.",
+    photoAlt: "Frame try-on over your photo",
     uploadPhoto: "Upload a photo",
     uploadedAlt: "Your uploaded photo",
     portraitTitle: "Your worn portrait",
@@ -152,6 +180,8 @@ export function ProductTryon({
 
   const [open, setOpen] = useState(false);
   const [consented, setConsented] = useState(false);
+  // Onglet actif : essayage caméra en direct, ou essayage statique sur photo.
+  const [mode, setMode] = useState<"live" | "photo">("live");
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [overlayLoading, setOverlayLoading] = useState(false);
   const [capture, setCapture] = useState<string | null>(null);
@@ -235,12 +265,13 @@ export function ProductTryon({
   }, [open, close]);
 
   // Façade du produit : sessionStorage d'abord (clé versionnée
-  // tryon.v3.<slug>.<hash image> — v3 = prompt façade avec amorces de
-  // charnières ; image produit changée = overlay régénéré), sinon génération
-  // via l'API. En cas d'échec (503/429…), overlay reste null et FaceTryon
-  // affiche sa façade neutre + un avis — l'essayage reste possible.
+  // tryon.v4.<slug>.<hash image> — v4 = prompt façade sans départs de
+  // branches, plaquettes/pont couleur monture ; image produit changée =
+  // overlay régénéré), sinon génération via l'API. En cas d'échec (503/429…),
+  // overlay reste null et FaceTryon affiche sa façade neutre + un avis —
+  // l'essayage reste possible.
   const loadOverlay = useCallback(async () => {
-    const key = `tryon.v3.${product.slug}.${shortHash(product.image ?? "")}`;
+    const key = `tryon.v4.${product.slug}.${shortHash(product.image ?? "")}`;
     try {
       const cached = sessionStorage.getItem(key);
       if (cached) {
@@ -365,6 +396,42 @@ export function ProductTryon({
 
   const step: "consent" | "tryon" = consented ? "tryon" : "consent";
 
+  // Réglages Largeur/Hauteur partagés entre les deux onglets (mêmes états :
+  // le réglage trouvé en direct reste valable sur photo, et inversement).
+  const renderSliders = (hint: string) => (
+    <>
+      <div className="mx-auto mt-4 grid w-full max-w-xl grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+        <label className="flex items-center gap-3 text-xs text-muted">
+          <span className="w-14 shrink-0">{s.width}</span>
+          <input
+            type="range"
+            min={-50}
+            max={50}
+            step={1}
+            value={widthAdjust}
+            onChange={(e) => setWidthAdjust(Number(e.target.value))}
+            aria-label={s.width}
+            className="h-2 w-full cursor-pointer accent-accent-blue"
+          />
+        </label>
+        <label className="flex items-center gap-3 text-xs text-muted">
+          <span className="w-14 shrink-0">{s.height}</span>
+          <input
+            type="range"
+            min={-50}
+            max={50}
+            step={1}
+            value={heightAdjust}
+            onChange={(e) => setHeightAdjust(Number(e.target.value))}
+            aria-label={s.height}
+            className="h-2 w-full cursor-pointer accent-accent-blue"
+          />
+        </label>
+      </div>
+      <p className="mt-2 text-center text-[11px] text-muted">{hint}</p>
+    </>
+  );
+
   return (
     <>
       <Button
@@ -423,6 +490,31 @@ export function ProductTryon({
               </div>
             ) : (
               <div className="pt-8">
+                {/* Onglets « En direct » / « Sur photo » (façon Zenni). */}
+                <div className="mb-4 flex justify-center" role="tablist" aria-label={s.dialogLabel}>
+                  <div className="inline-flex rounded-full border border-border bg-surface p-1">
+                    {(
+                      [
+                        ["live", s.tabLive],
+                        ["photo", s.tabPhoto],
+                      ] as const
+                    ).map(([m, label]) => (
+                      <button
+                        key={m}
+                        role="tab"
+                        aria-selected={mode === m}
+                        onClick={() => setMode(m)}
+                        className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                          mode === m
+                            ? "bg-foreground text-background"
+                            : "text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {overlayLoading && (
                   <p className="mb-4 text-center text-sm text-muted" role="status">
                     {s.preparing}
@@ -433,72 +525,69 @@ export function ProductTryon({
                     {s.unavailable}
                   </p>
                 )}
-                {/* FaceTryon reste monté derrière l'aperçu : « Reprendre »
-                    est instantané. Il est démonté (caméra coupée) uniquement
-                    à la fermeture de la modale. */}
-                <div className={capture ? "hidden" : undefined}>
-                  <FaceTryon
-                    frameSrc={overlay?.image}
-                    frameBg={overlay?.bg}
-                    loading={overlayLoading}
-                    onCapture={setCapture}
-                    locale={locale}
-                    widthAdjust={widthAdjust}
-                    heightAdjust={heightAdjust}
-                  />
-                  {/* Réglages discrets : échelle (Largeur) et position (Hauteur)
-                      de la façade, appliqués en direct dans le canvas. */}
-                  <div className="mx-auto mt-4 grid w-full max-w-xl grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
-                    <label className="flex items-center gap-3 text-xs text-muted">
-                      <span className="w-14 shrink-0">{s.width}</span>
-                      <input
-                        type="range"
-                        min={-50}
-                        max={50}
-                        step={1}
-                        value={widthAdjust}
-                        onChange={(e) => setWidthAdjust(Number(e.target.value))}
-                        aria-label={s.width}
-                        className="h-2 w-full cursor-pointer accent-accent-blue"
+                {/* Entrée fichier partagée (onglet photo) : lecture locale +
+                    redimensionnement 1024 px JPEG, jamais stockée. */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onUploadFile}
+                  aria-label={s.uploadPhoto}
+                />
+                {mode === "photo" ? (
+                  /* ── Onglet « Sur photo » : essayage statique sur photo ── */
+                  !uploaded ? (
+                    <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-2xl border border-dashed border-border py-12">
+                      <Upload className="h-10 w-10 text-muted" />
+                      <p className="max-w-sm text-center text-sm text-muted">{s.photoIntro}</p>
+                      <Button className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4" />
+                        {s.uploadPhoto}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <PhotoTryon
+                        photo={uploaded}
+                        frameSrc={overlay?.image}
+                        frameBg={overlay?.bg}
+                        widthAdjust={widthAdjust}
+                        heightAdjust={heightAdjust}
+                        locale={locale}
+                        slug={product.slug}
                       />
-                    </label>
-                    <label className="flex items-center gap-3 text-xs text-muted">
-                      <span className="w-14 shrink-0">{s.height}</span>
-                      <input
-                        type="range"
-                        min={-50}
-                        max={50}
-                        step={1}
-                        value={heightAdjust}
-                        onChange={(e) => setHeightAdjust(Number(e.target.value))}
-                        aria-label={s.height}
-                        className="h-2 w-full cursor-pointer accent-accent-blue"
+                      {renderSliders(s.adjustHintPhoto)}
+                      <div className="mt-4 flex justify-center">
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="h-4 w-4" />
+                          {s.changePhoto}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <>
+                    {/* FaceTryon reste monté derrière l'aperçu : « Reprendre »
+                        est instantané. Il est démonté (caméra coupée) à la
+                        fermeture de la modale ou au passage à l'onglet photo. */}
+                    <div className={capture ? "hidden" : undefined}>
+                      <FaceTryon
+                        frameSrc={overlay?.image}
+                        frameBg={overlay?.bg}
+                        loading={overlayLoading}
+                        onCapture={setCapture}
+                        locale={locale}
+                        widthAdjust={widthAdjust}
+                        heightAdjust={heightAdjust}
                       />
-                    </label>
-                  </div>
-                  <p className="mt-2 text-center text-[11px] text-muted">{s.adjustHint}</p>
-                  {/* Alternative sans caméra : téléverser une photo pour le
-                      portrait porté (lue et réduite localement, jamais stockée). */}
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="h-4 w-4" />
-                      {s.uploadPhoto}
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={onUploadFile}
-                      aria-label={s.uploadPhoto}
-                    />
-                  </div>
-                </div>
-                {capture && (
+                      {renderSliders(s.adjustHint)}
+                    </div>
+                    {capture && (
                   <div>
                     {/* Data URL locale (jamais envoyée au serveur) : <img>
                         suffit, next/image n'apporte rien ici. */}
@@ -526,6 +615,8 @@ export function ProductTryon({
                     </div>
                   </div>
                 )}
+                  </>
+                )}
 
                 {/* ── Votre portrait porté / Your worn portrait ─────────────
                     Visible dès qu'une photo source existe (capture caméra ou
@@ -536,17 +627,8 @@ export function ProductTryon({
                     <h3 className="font-display text-lg font-bold">{s.portraitTitle}</h3>
                     <p className="mt-2 text-sm text-muted">{s.portraitIntro}</p>
 
-                    {!capture && uploaded && !portrait && (
-                      /* Aperçu local de la photo téléversée (jamais envoyée
-                         hors génération). */
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={uploaded}
-                        alt={s.uploadedAlt}
-                        className="mx-auto mt-4 max-h-44 rounded-xl border border-border"
-                      />
-                    )}
-
+                    {/* (L'aperçu simple de la photo téléversée est remplacé
+                        par l'onglet « Sur photo » : canvas photo + façade.) */}
                     {portraitLoading ? (
                       <p
                         className="mt-4 flex items-center justify-center gap-2 text-center text-sm text-muted"
@@ -610,5 +692,163 @@ export function ProductTryon({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Essayage SUR PHOTO (mode statique, façon « Upload photo » de Zenni) :
+ * la photo téléversée est analysée UNE seule fois (FaceLandmarker.detect en
+ * mode IMAGE, pose 3D incluse si disponible), puis photo + façade ancrée sont
+ * rendues dans un canvas statique — même math que le live (sans miroir).
+ * Les sliders Largeur/Hauteur re-rendent instantanément ; bouton Télécharger.
+ * Tout reste dans le navigateur.
+ */
+function PhotoTryon({
+  photo,
+  frameSrc,
+  frameBg,
+  widthAdjust,
+  heightAdjust,
+  locale,
+  slug,
+}: {
+  photo: string;
+  frameSrc?: string | null;
+  frameBg?: "transparent" | "white";
+  widthAdjust: number;
+  heightAdjust: number;
+  locale: Locale;
+  slug: string;
+}) {
+  const s = STRINGS[locale] ?? STRINGS.fr;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const photoImgRef = useRef<HTMLImageElement | null>(null);
+  const frameImgRef = useRef<HTMLImageElement | null>(null);
+  const landmarksRef = useRef<Array<{ x: number; y: number }> | null>(null);
+  const poseRef = useRef<PoseAngles | null>(null);
+  const [detect, setDetect] = useState<"pending" | "ok" | "none">("pending");
+
+  // Rendu statique : photo, puis façade ancrée (pas de miroir sur une photo).
+  const render = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = photoImgRef.current;
+    if (!canvas || !img) return;
+    const W = (canvas.width = img.naturalWidth || 1);
+    const H = (canvas.height = img.naturalHeight || 1);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0, W, H);
+    const frame = frameImgRef.current;
+    const landmarks = landmarksRef.current;
+    if (frame && landmarks) {
+      const anchor = computeFrameAnchor(landmarks, W, H, false, poseRef.current);
+      drawFrameOverlay(
+        ctx,
+        frame,
+        anchor,
+        {
+          w: Math.max(-50, Math.min(50, widthAdjust)),
+          h: Math.max(-50, Math.min(50, heightAdjust)),
+        },
+        1
+      );
+    }
+  }, [widthAdjust, heightAdjust]);
+
+  // Détection UNE seule fois par photo (mode IMAGE, repli GPU → CPU).
+  useEffect(() => {
+    let cancelled = false;
+    setDetect("pending");
+    landmarksRef.current = null;
+    poseRef.current = null;
+    (async () => {
+      try {
+        const img = await loadImage(photo);
+        if (cancelled) return;
+        photoImgRef.current = img;
+        render(); // affiche déjà la photo pendant l'analyse
+        let result: any = null;
+        try {
+          const { landmarker } = await getImageLandmarker("GPU");
+          result = landmarker.detect(img);
+          landmarker.close?.();
+        } catch {
+          const { landmarker } = await getImageLandmarker("CPU");
+          result = landmarker.detect(img);
+          landmarker.close?.();
+        }
+        if (cancelled) return;
+        const landmarks = result?.faceLandmarks?.[0] ?? null;
+        landmarksRef.current = landmarks;
+        poseRef.current = extractPose(result?.facialTransformationMatrixes?.[0]?.data);
+        setDetect(landmarks ? "ok" : "none");
+        render();
+      } catch {
+        if (!cancelled) setDetect("none");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photo]);
+
+  // Façade produit (ou neutre en repli) : même préparation que le live
+  // (détourage blanc, érosion anti-halo, rognage alpha).
+  useEffect(() => {
+    let cancelled = false;
+    const src = frameSrc || NEUTRAL_FRAME;
+    prepareFrame(src, frameSrc ? frameBg : "transparent").then((img) => {
+      if (!cancelled && img) {
+        frameImgRef.current = img;
+        render();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameSrc, frameBg]);
+
+  // Sliders : re-rendu instantané (render dépend de widthAdjust/heightAdjust).
+  useEffect(() => {
+    render();
+  }, [render]);
+
+  const download = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/jpeg", 0.9);
+    a.download = `essayage-photo-${slug}.jpg`;
+    a.click();
+  }, [slug]);
+
+  return (
+    <div>
+      <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
+        <canvas ref={canvasRef} className="block h-auto w-full" role="img" aria-label={s.photoAlt} />
+        {detect === "pending" && (
+          <div className="absolute left-4 top-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white backdrop-blur">
+              <Loader2 className="h-3 w-3 animate-spin" /> {s.analyzing}
+            </span>
+          </div>
+        )}
+      </div>
+      {detect === "none" && (
+        <p className="mt-3 text-center text-sm text-muted" role="status">
+          {s.noFace}
+        </p>
+      )}
+      {detect === "ok" && (
+        <div className="mt-5 flex justify-center">
+          <Button onClick={download} variant="accent" className="gap-2">
+            <ImageDown className="h-4 w-4" />
+            {s.download}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

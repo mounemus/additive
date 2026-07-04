@@ -33,7 +33,9 @@ export function getFaceLandmarker(delegate: Delegate = "GPU"): Promise<any> {
       runningMode: "VIDEO",
       numFaces: 1,
       outputFaceBlendshapes: false,
-      outputFacialTransformationMatrixes: false,
+      // Matrice de transformation faciale 4x4 (colonne-major) : yaw/pitch/roll
+      // extraits côté composant pour que la façade suive la pose 3D de la tête.
+      outputFacialTransformationMatrixes: true,
     });
     return { landmarker, vision };
   })();
@@ -50,6 +52,8 @@ export async function getImageLandmarker(delegate: Delegate = "GPU"): Promise<an
     runningMode: "IMAGE",
     numFaces: 1,
     outputFaceBlendshapes: false,
+    // Pose 3D aussi disponible en mode photo statique (même math que le live).
+    outputFacialTransformationMatrixes: true,
   });
   return { landmarker, vision };
 }
