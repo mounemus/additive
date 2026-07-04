@@ -758,6 +758,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                       frameBg={overlay?.bg}
                       loading={overlayLoading}
                       onCapture={(d) => setSnapshot(d)}
+                      locale="fr"
                     />
                   )}
                 </div>

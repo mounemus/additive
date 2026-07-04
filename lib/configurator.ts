@@ -460,15 +460,25 @@ export function buildWornPortraitPromptFr(
  * branches coupées aux charnières, cadrage bord à bord (l'overlay est ensuite
  * rogné sur l'alpha et ancré aux landmarks).
  */
-export function buildFrameOverlayPromptFr(concept: Concept, styleTags: StyleTag[]): string {
+export function buildFrameOverlayPromptFr(
+  concept: Concept,
+  styleTags: StyleTag[],
+  // Fiche produit : couleurs/matières RÉELLES du modèle (prioritaires sur la
+  // palette de profil) — indispensable à la fidélité (ex. Genesis = noir).
+  product?: { colors?: string[]; materials?: string[] }
+): string {
   const pal = profilePalette(styleTags);
+  const colors = product?.colors?.length
+    ? product.colors.join(", ")
+    : (pal.colors[1] ?? pal.colors[0]);
+  const material = product?.materials?.length ? product.materials.join(", ") : pal.material;
   return [
     "Vue strictement de face de la SEULE façade d'une monture de lunettes",
     `imprimée en 3D « ${concept.label} » (branches coupées net aux charnières,`,
     "ne montrer que la face avant avec les deux cercles et le pont).",
     concept.summary,
-    `Matière ${pal.material}, couleur ${pal.colors[1] ?? pal.colors[0]}.`,
-    "Cadrage bord à bord, monture centrée et horizontale, occupant toute la largeur,",
+    `Matière ${material}, couleur ${colors} — respecte scrupuleusement cette couleur.`,
+    "Cadrage serré bord à bord, monture centrée et horizontale, occupant toute la largeur,",
     "verres transparents (pas de reflet opaque), aucune ombre portée, aucun visage.",
   ].join(" ");
 }

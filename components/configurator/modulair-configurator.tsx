@@ -231,7 +231,7 @@ export function ModulairConfigurator() {
           )}
 
           {tab === "ar" && (
-            <FaceTryon frameSrc={overlay?.image} frameBg={overlay?.bg} loading={overlayLoading} onCapture={(d) => setPhoto(d)} />
+            <FaceTryon frameSrc={overlay?.image} frameBg={overlay?.bg} loading={overlayLoading} onCapture={(d) => setPhoto(d)} locale="fr" />
           )}
 
           <p className="mt-4 text-sm text-muted">{summary}</p>

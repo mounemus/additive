@@ -35,6 +35,9 @@ const STRINGS = {
     captureAlt: "Aperçu de votre essayage",
     download: "Télécharger",
     retake: "Reprendre",
+    width: "Largeur",
+    height: "Hauteur",
+    adjustHint: "Ajustez si besoin — vue miroir",
   },
   en: {
     open: "Try on my face",
@@ -54,10 +57,21 @@ const STRINGS = {
     captureAlt: "Preview of your try-on",
     download: "Download",
     retake: "Retake",
+    width: "Width",
+    height: "Height",
+    adjustHint: "Adjust if needed — mirror view",
   },
 } as const;
 
 type Overlay = { image: string; bg: "transparent" | "white" };
+
+// Hash court (djb2, base36) de l'URL de l'image produit : intégré à la clé
+// sessionStorage pour qu'une image changée invalide l'overlay mémorisé.
+function shortHash(input: string): string {
+  let h = 5381;
+  for (let i = 0; i < input.length; i += 1) h = ((h << 5) + h + input.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
 
 export function ProductTryon({
   product,
@@ -73,6 +87,9 @@ export function ProductTryon({
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [overlayLoading, setOverlayLoading] = useState(false);
   const [capture, setCapture] = useState<string | null>(null);
+  // Réglages utilisateur (sliders) : échelle et position verticale de la façade.
+  const [widthAdjust, setWidthAdjust] = useState(0);
+  const [heightAdjust, setHeightAdjust] = useState(0);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -124,11 +141,12 @@ export function ProductTryon({
     };
   }, [open, close]);
 
-  // Façade du produit : sessionStorage d'abord (clé tryon.<slug>), sinon
-  // génération via l'API. En cas d'échec (503/429…), overlay reste null et
-  // FaceTryon affiche sa façade neutre + un avis — l'essayage reste possible.
+  // Façade du produit : sessionStorage d'abord (clé versionnée
+  // tryon.v2.<slug>.<hash image> — image produit changée = overlay régénéré),
+  // sinon génération via l'API. En cas d'échec (503/429…), overlay reste null
+  // et FaceTryon affiche sa façade neutre + un avis — l'essayage reste possible.
   const loadOverlay = useCallback(async () => {
-    const key = `tryon.${product.slug}`;
+    const key = `tryon.v2.${product.slug}.${shortHash(product.image ?? "")}`;
     try {
       const cached = sessionStorage.getItem(key);
       if (cached) {
@@ -162,6 +180,9 @@ export function ProductTryon({
           styleTags: [],
           conceptSummary: product.shortDescription ?? undefined,
           conceptImage,
+          // Couleurs/matières réelles du produit → fidélité du prompt serveur.
+          colors: product.colors ?? [],
+          materials: product.materials ?? [],
         }),
       });
       if (!res.ok) throw new Error(String(res.status));
@@ -182,7 +203,7 @@ export function ProductTryon({
     } finally {
       setOverlayLoading(false);
     }
-  }, [product.slug, product.name, product.image, product.shortDescription]);
+  }, [product]);
 
   const accept = useCallback(() => {
     setConsented(true);
@@ -271,7 +292,41 @@ export function ProductTryon({
                     frameBg={overlay?.bg}
                     loading={overlayLoading}
                     onCapture={setCapture}
+                    locale={locale}
+                    widthAdjust={widthAdjust}
+                    heightAdjust={heightAdjust}
                   />
+                  {/* Réglages discrets : échelle (Largeur) et position (Hauteur)
+                      de la façade, appliqués en direct dans le canvas. */}
+                  <div className="mx-auto mt-4 grid w-full max-w-xl grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
+                    <label className="flex items-center gap-3 text-xs text-muted">
+                      <span className="w-14 shrink-0">{s.width}</span>
+                      <input
+                        type="range"
+                        min={-50}
+                        max={50}
+                        step={1}
+                        value={widthAdjust}
+                        onChange={(e) => setWidthAdjust(Number(e.target.value))}
+                        aria-label={s.width}
+                        className="h-2 w-full cursor-pointer accent-accent-blue"
+                      />
+                    </label>
+                    <label className="flex items-center gap-3 text-xs text-muted">
+                      <span className="w-14 shrink-0">{s.height}</span>
+                      <input
+                        type="range"
+                        min={-50}
+                        max={50}
+                        step={1}
+                        value={heightAdjust}
+                        onChange={(e) => setHeightAdjust(Number(e.target.value))}
+                        aria-label={s.height}
+                        className="h-2 w-full cursor-pointer accent-accent-blue"
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-2 text-center text-[11px] text-muted">{s.adjustHint}</p>
                 </div>
                 {capture && (
                   <div>

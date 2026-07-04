@@ -9,22 +9,51 @@ import { demoFrameOverlaySvg } from "@/lib/ai/demo-visuals";
 // Façade neutre (gris foncé) en attendant la vraie monture — jamais orange.
 const NEUTRAL_FRAME = demoFrameOverlaySvg(["#e7e7e7", "#2b2b2b", "#111111"]);
 
+// Libellés internes FR/EN — cohérents avec la prop `locale` (défaut fr).
+const TRYON_STRINGS = {
+  fr: {
+    start: "Essayer sur mon visage",
+    capture: "Capturer mon essayage",
+    cameraError: "Caméra indisponible. Vous pouvez tout de même utiliser la vue studio.",
+    preparing: "Préparation de votre monture…",
+    genericNotice: "Aperçu générique — la façade exacte du modèle est momentanément indisponible.",
+    preparingConcept: "Préparation de la monture…",
+  },
+  en: {
+    start: "Try on my face",
+    capture: "Capture my try-on",
+    cameraError: "Camera unavailable. You can still use the studio view.",
+    preparing: "Preparing your frame…",
+    genericNotice: "Generic preview — the exact frame for this model is momentarily unavailable.",
+    preparingConcept: "Preparing the frame…",
+  },
+} as const;
+
 /**
  * Essayage AR « Essayer sur mon visage » : la façade transparente du concept
  * (vrai PNG IA, détouré + rogné sur l'alpha) est ancrée en temps réel aux
- * tempes (234/454) et à la ligne des yeux (33/263), vue miroir selfie.
+ * tempes (234/454) et centrée sur les pupilles (33/263), vue miroir selfie.
  */
 export function FaceTryon({
   frameSrc,
   frameBg,
   loading,
   onCapture,
+  locale = "fr",
+  widthAdjust = 0,
+  heightAdjust = 0,
 }: {
   frameSrc?: string | null;
   frameBg?: "transparent" | "white";
   loading?: boolean;
   onCapture: (dataUrl: string) => void;
+  locale?: "fr" | "en";
+  /** Réglage utilisateur -50..50 : échelle horizontale de la façade (±25 %). */
+  widthAdjust?: number;
+  /** Réglage utilisateur -50..50 : offset vertical de la façade (± ~12 % de sa largeur). */
+  heightAdjust?: number;
 }) {
+  const s = TRYON_STRINGS[locale] ?? TRYON_STRINGS.fr;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameImgRef = useRef<HTMLImageElement | null>(null);
@@ -36,6 +65,14 @@ export function FaceTryon({
   const switchingRef = useRef(false);
   const lmRef = useRef<any>(null);
   const filtersRef = useRef<ReturnType<typeof makeFilters> | null>(null);
+  // Réglages utilisateur lus dans la boucle rAF via ref (loop en useCallback([])).
+  const adjRef = useRef({ w: 0, h: 0 });
+  useEffect(() => {
+    adjRef.current = {
+      w: Math.max(-50, Math.min(50, widthAdjust)),
+      h: Math.max(-50, Math.min(50, heightAdjust)),
+    };
+  }, [widthAdjust, heightAdjust]);
 
   const [status, setStatus] = useState<"idle" | "loading" | "live" | "error">("idle");
   const [frameReady, setFrameReady] = useState(false);
@@ -126,9 +163,13 @@ export function FaceTryon({
           const tB = p(454);
           const eL = p(33);
           const eR = p(263);
-          const targetW = Math.hypot(tB.x - tA.x, tB.y - tA.y) * 1.02;
+          const templeDist = Math.hypot(tB.x - tA.x, tB.y - tA.y);
+          // Légèrement plus large que l'écart des tempes : couvre les charnières.
+          const targetW = templeDist * 1.08;
           const cx = (tA.x + tB.x) / 2;
-          const cy = (eL.y + eR.y) / 2;
+          // Les verres se centrent sur les PUPILLES : ancrage un peu SOUS la
+          // ligne des yeux (et non au niveau des sourcils).
+          const cy = (eL.y + eR.y) / 2 + templeDist * 0.04;
           // Angle de la ligne des tempes ORDONNÉE gauche→droite EN ESPACE ÉCRAN.
           // Après le miroir, 234/454 s'inversent : sans cet ordre, atan2 rend
           // ±180° (façade dessinée à l'envers) et le filtre devient instable au
@@ -145,12 +186,20 @@ export function FaceTryon({
           const sw = f.w(targetW, ts);
           const sa = f.a(a, ts);
 
+          // Réglages utilisateur : échelle (Largeur) et offset vertical (Hauteur).
+          const adj = adjRef.current;
+          const dw = sw * (1 + adj.w / 200); // -50..50 → ±25 %
+          const dy = sw * (adj.h / 400); // -50..50 → ± ~12 % de la largeur
           const ratio = frame.naturalHeight / frame.naturalWidth;
-          const h = sw * ratio;
+          const h = dw * ratio;
           ctx.save();
-          ctx.translate(scx, scy);
+          ctx.translate(scx, scy + dy);
           ctx.rotate(sa);
-          ctx.drawImage(frame, -sw / 2, -h / 2, sw, h);
+          // Ombre portée douce sur la façade seule : effet « posée sur le nez ».
+          ctx.shadowColor = "rgba(0,0,0,0.25)";
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetY = 4;
+          ctx.drawImage(frame, -dw / 2, -h / 2, dw, h);
           ctx.restore();
         }
       }
@@ -200,7 +249,7 @@ export function FaceTryon({
         {status === "idle" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/60">
             <Camera className="h-12 w-12" />
-            <p className="text-sm">Essayer sur mon visage</p>
+            <p className="text-sm">{s.start}</p>
           </div>
         )}
         {status === "loading" && (
@@ -210,20 +259,20 @@ export function FaceTryon({
         )}
         {status === "error" && (
           <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-white/70">
-            Caméra indisponible. Vous pouvez tout de même utiliser la vue studio.
+            {s.cameraError}
           </div>
         )}
         {status === "live" && preparing && (
           <div className="absolute left-4 top-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white backdrop-blur">
-              <Loader2 className="h-3 w-3 animate-spin" /> Préparation de votre monture…
+              <Loader2 className="h-3 w-3 animate-spin" /> {s.preparing}
             </span>
           </div>
         )}
         {status === "live" && !preparing && !frameSrc && (
           <div className="absolute left-4 top-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white backdrop-blur">
-              Aperçu générique — la façade exacte du concept est momentanément indisponible.
+              {s.genericNotice}
             </span>
           </div>
         )}
@@ -231,17 +280,17 @@ export function FaceTryon({
       <div className="mt-5 flex flex-wrap justify-center gap-3">
         {status !== "live" ? (
           <Button onClick={start} className="gap-2">
-            <Camera className="h-4 w-4" /> Essayer sur mon visage
+            <Camera className="h-4 w-4" /> {s.start}
           </Button>
         ) : (
           <Button onClick={capture} variant="accent" className="gap-2">
-            <ImageDown className="h-4 w-4" /> Capturer mon essayage
+            <ImageDown className="h-4 w-4" /> {s.capture}
           </Button>
         )}
       </div>
       {status === "idle" && preparing && (
         <p className="mt-3 text-center text-xs text-muted">
-          <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Préparation de la monture du concept…
+          <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> {s.preparingConcept}
         </p>
       )}
     </div>
@@ -278,8 +327,10 @@ function oneEuro(minCutoff: number, beta: number, dCutoff = 1) {
 
 function makeFilters() {
   return {
-    cx: oneEuro(1.6, 0.5),
-    cy: oneEuro(1.6, 0.5),
+    // minCutoff position 2.2 : suivi plus réactif (moins de « traîne »)
+    // sans réintroduire de tremblement visible à l'arrêt.
+    cx: oneEuro(2.2, 0.5),
+    cy: oneEuro(2.2, 0.5),
     w: oneEuro(1.0, 0.35),
     a: oneEuro(1.0, 0.5),
   };

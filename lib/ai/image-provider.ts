@@ -256,13 +256,28 @@ async function openaiEdit(
  * blanc pur + détourage côté client (bg:'white'). Hérité de
  * generate_frame_overlay du plugin.
  */
-/** Convertit une URL http(s) en data URL (référence inline pour Gemini). */
-async function toDataUrl(src: string): Promise<string | null> {
+/** Convertit une URL http(s) en data URL (référence inline pour Gemini).
+ *  Exporté : la route frame-overlay inline la référence AVANT le calcul de la
+ *  clé de cache (hash du contenu = image changée → overlay régénéré). */
+export async function toDataUrl(src: string): Promise<string | null> {
   if (src.startsWith("data:")) return src;
   if (!/^https?:\/\//.test(src)) return null;
   try {
-    const res = await fetch(src, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) return null;
+    const res = await fetch(src, {
+      signal: AbortSignal.timeout(15_000),
+      // User-Agent navigateur : certains WordPress (protection hotlink, ex.
+      // buypukka.ca) renvoient 403 aux clients non identifiés — sans cette
+      // référence, la façade générée n'est PAS fidèle au produit.
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.5",
+      },
+    });
+    if (!res.ok) {
+      console.error("[image-provider] toDataUrl http", res.status, src.slice(0, 160));
+      return null;
+    }
     const mime = res.headers.get("content-type")?.split(";")[0] || "image/png";
     if (!mime.startsWith("image/")) return null;
     const buf = Buffer.from(await res.arrayBuffer());
@@ -279,9 +294,21 @@ export async function generateFrameOverlay(opts: {
   const { provider, model } = await getTaskConfig("frameOverlay");
   // L'image du concept peut être une URL distante : on l'inline pour que
   // Gemini reçoive TOUJOURS la référence (fidélité de la façade).
+  const hadRef = Boolean(opts.conceptImage);
   if (opts.conceptImage && !opts.conceptImage.startsWith("data:")) {
     opts = { ...opts, conceptImage: (await toDataUrl(opts.conceptImage)) ?? undefined };
   }
+  // Diagnostic SERVEUR uniquement (jamais côté client) : référence présente ?
+  // Sans référence inline, la façade générée sera générique (non fidèle).
+  console.info(
+    "[frame-overlay] référence:",
+    opts.conceptImage ? "inline OK" : hadRef ? "ÉCHEC fetch → façade générique" : "absente",
+    "| tâche:", provider, model ?? ""
+  );
+
+  // Même si la tâche est en « demo » (ou mal configurée), une clé gemini/openai
+  // existante est utilisée quand même — overlayGemini/overlayOpenAI récupèrent
+  // leur clé directement (comportement fallback hérité du plugin WP).
   // Avec l'image du concept, Gemini la reproduit fidèlement (OpenAI
   // /generations ne prend pas d'image en entrée) → Gemini en tête.
   const order = opts.conceptImage
@@ -295,13 +322,16 @@ export async function generateFrameOverlay(opts: {
     if (p === "openai") {
       const r = await overlayOpenAI(opts.prompt);
       logAiCall({ task: "frameOverlay", provider: "openai", model: "gpt-image-1", ok: Boolean(r), latencyMs: Date.now() - started });
+      console.info("[frame-overlay] provider openai:", r ? "ok" : "indisponible");
       if (r) return r;
     } else {
       const r = await overlayGemini(opts.prompt, opts.conceptImage, model);
       logAiCall({ task: "frameOverlay", provider: "gemini", model, ok: Boolean(r), latencyMs: Date.now() - started });
+      console.info("[frame-overlay] provider gemini:", r ? `ok (référence: ${opts.conceptImage ? "oui" : "non"})` : "indisponible");
       if (r) return r;
     }
   }
+  console.error("[frame-overlay] aucun provider disponible (clés absentes ou échecs)");
   return { ok: false };
 }
 
@@ -347,7 +377,7 @@ async function overlayGemini(
   const refs = conceptImage && conceptImage.startsWith("data:") ? [conceptImage] : [];
   // Avec l'image du concept : reproduire EXACTEMENT la monture (fidélité AR).
   const fullPrompt = conceptImage
-    ? `${prompt} Reproduis EXACTEMENT la monture montrée dans l'image de référence — même forme, même épaisseur, même couleur, même matière. Vue strictement de face, façade seule (branches coupées aux charnières), cadrage bord à bord. Fond blanc pur uni #FFFFFF, sans ombre portée.`
+    ? `${prompt} IMPÉRATIF : reproduis EXACTEMENT la monture montrée dans l'image de référence — même forme, même épaisseur, même COULEUR (n'éclaircis pas, n'invente pas une teinte crème si la monture est noire), même matière, mêmes motifs/texture (lattice, perforations…). Vue strictement de face, façade seule (branches coupées net aux charnières), cadrage serré bord à bord : la façade occupe toute la largeur de l'image. Fond blanc pur uni #FFFFFF, sans ombre portée, sans visage, sans décor.`
     : `${prompt} Fond blanc pur uni #FFFFFF, sans ombre, sans décor.`;
   const r = await geminiGenerate(fullPrompt, refs, key, m);
   if (r.ok) return { ok: true, dataUrl: r.dataUrl, bg: "white" };

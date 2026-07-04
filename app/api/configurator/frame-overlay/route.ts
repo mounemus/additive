@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createHash } from "crypto";
 import {
   buildFrameOverlayPromptFr,
   buildConcepts,
   conceptByLabel,
   type StyleTag,
 } from "@/lib/configurator";
-import { generateFrameOverlay } from "@/lib/ai/image-provider";
+import { generateFrameOverlay, toDataUrl } from "@/lib/ai/image-provider";
 import { guard, RULES } from "@/lib/rate-limit";
 import { makeCacheKey, getCachedImage, persistAndCache, logAiCall } from "@/lib/ai/image-store";
 
@@ -18,6 +19,9 @@ const schema = z.object({
   styleTags: z.array(z.string().max(40)).max(8).default([]),
   conceptImage: z.string().max(8_000_000).optional(),
   conceptSummary: z.string().max(2000).optional(),
+  // Fiche produit : couleurs/matières réelles injectées dans le prompt.
+  colors: z.array(z.string().max(60)).max(10).default([]),
+  materials: z.array(z.string().max(60)).max(10).default([]),
 });
 
 /**
@@ -57,12 +61,31 @@ export async function POST(req: Request) {
       tags: [] as StyleTag[],
     };
 
-  // Cache : même concept + même image de référence = même façade.
+  // Référence produit inlinée AVANT le calcul de la clé de cache : le hash
+  // porte sur le CONTENU de l'image (image produit changée sous la même URL
+  // = overlay régénéré). Log SERVEUR uniquement du chemin pris.
+  const rawRef = parsed.data.conceptImage;
+  let conceptImage: string | undefined;
+  if (rawRef) {
+    conceptImage = rawRef.startsWith("data:") ? rawRef : ((await toDataUrl(rawRef)) ?? undefined);
+    console.info(
+      "[frame-overlay] route référence:",
+      conceptImage ? "inline OK" : "ÉCHEC fetch (403/timeout ?) → façade générique",
+      rawRef.startsWith("data:") ? "(data URL client)" : rawRef.slice(0, 160)
+    );
+  }
+  const refHash = conceptImage
+    ? createHash("sha256").update(conceptImage).digest("hex").slice(0, 16)
+    : (rawRef ?? "");
+
+  // Cache : même concept + même CONTENU d'image de référence = même façade.
   // Valeur stockée = `<bg>|<url>` (le type de fond doit survivre au cache).
   const cacheKey = makeCacheKey("frameOverlay", [
     parsed.data.conceptLabel,
     [...styleTags].sort(),
-    parsed.data.conceptImage ?? "",
+    refHash,
+    [...parsed.data.colors].sort(),
+    [...parsed.data.materials].sort(),
   ]);
   const cached = await getCachedImage(cacheKey);
   if (cached) {
@@ -74,8 +97,11 @@ export async function POST(req: Request) {
     }
   }
 
-  const prompt = buildFrameOverlayPromptFr(concept, styleTags);
-  const result = await generateFrameOverlay({ prompt, conceptImage: parsed.data.conceptImage });
+  const prompt = buildFrameOverlayPromptFr(concept, styleTags, {
+    colors: parsed.data.colors,
+    materials: parsed.data.materials,
+  });
+  const result = await generateFrameOverlay({ prompt, conceptImage });
   if (!result.ok) return NextResponse.json({ error: "unavailable" }, { status: 503 });
 
   // Persistance CDN (ou data URL en repli), puis mise en cache préfixée du fond.
