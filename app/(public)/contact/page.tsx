@@ -14,10 +14,24 @@ export const metadata = buildMetadata({
   alternate: "/en/contact",
 });
 
+/** Message pré-rempli depuis la fiche produit (modèle + déclinaisons choisies). */
+function buildPrefill(sp: { modele?: string; variant?: string }): string | undefined {
+  const lines: string[] = [];
+  if (sp.modele) lines.push(`Modèle souhaité : ${sp.modele}`);
+  if (sp.variant) {
+    const detail = sp.variant
+      .split("|")
+      .map((pair) => pair.replace(":", " : "))
+      .join(" · ");
+    if (detail) lines.push(`Déclinaisons : ${detail}`);
+  }
+  return lines.length ? lines.join("\n") : undefined;
+}
+
 export default function ContactPage({
   searchParams,
 }: {
-  searchParams: { type?: string };
+  searchParams: { type?: string; modele?: string; variant?: string };
 }) {
   return (
     <section className="pb-14 pt-28 md:pt-32">
@@ -68,7 +82,10 @@ export default function ContactPage({
 
         <FadeIn delay={0.15}>
           <div className="rounded-3xl border border-border bg-surface p-8 md:p-10">
-            <ContactForm defaultType={searchParams.type} />
+            <ContactForm
+              defaultType={searchParams.type}
+              defaultMessage={buildPrefill(searchParams)}
+            />
           </div>
         </FadeIn>
       </div>

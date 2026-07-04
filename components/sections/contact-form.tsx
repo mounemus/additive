@@ -63,9 +63,11 @@ const FORM_COPY = {
 
 export function ContactForm({
   defaultType,
+  defaultMessage,
   locale = "fr",
 }: {
   defaultType?: string;
+  defaultMessage?: string;
   locale?: Locale;
 }) {
   const copy = FORM_COPY[locale];
@@ -80,6 +82,7 @@ export function ContactForm({
       type: copy.types.some((t) => t.value === defaultType)
         ? (defaultType as ContactInput["type"])
         : "achat",
+      message: defaultMessage || undefined,
     },
   });
 

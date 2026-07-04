@@ -25,6 +25,9 @@ model Product {
   dimensions       String?
   features         String[]
   model3dUrl       String?        // modèle 3D GLB/GLTF (visualisable et manipulable)
+  // Déclinaisons type WooCommerce (verres, taille de branches…) :
+  // [{ name: string, values: [{ label: string, priceDelta?: number }] }]
+  variants         Json?
   customizable     Boolean        @default(true)
   isFeatured       Boolean        @default(false)
   isPublished      Boolean        @default(false)

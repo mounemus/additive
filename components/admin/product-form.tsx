@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2, Trash2, GripVertical } from "lucide-react";
+import { Loader2, Trash2, GripVertical, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +39,7 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
     features: initial?.features ?? [],
     images: initial?.images ?? [],
     model3dUrl: initial?.model3dUrl ?? "",
+    variants: initial?.variants ?? [],
     customizable: initial?.customizable ?? true,
     isFeatured: initial?.isFeatured ?? false,
     isPublished: initial?.isPublished ?? false,
@@ -50,6 +51,62 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
     setState((s) => ({ ...s, [key]: value }));
+  }
+
+  // ── Déclinaisons (groupes de variantes type WooCommerce) ──────────────────
+  const variants = state.variants;
+  function setVariants(next: ProductInput["variants"]) {
+    set("variants", next);
+  }
+  function addGroup() {
+    if (variants.length >= 6) return;
+    setVariants([...variants, { name: "", values: [{ label: "" }] }]);
+  }
+  function removeGroup(gi: number) {
+    setVariants(variants.filter((_, i) => i !== gi));
+  }
+  function renameGroup(gi: number, name: string) {
+    setVariants(variants.map((g, i) => (i === gi ? { ...g, name } : g)));
+  }
+  function addValue(gi: number) {
+    setVariants(
+      variants.map((g, i) =>
+        i === gi && g.values.length < 12
+          ? { ...g, values: [...g.values, { label: "" }] }
+          : g
+      )
+    );
+  }
+  function removeValue(gi: number, vi: number) {
+    setVariants(
+      variants.map((g, i) =>
+        i === gi ? { ...g, values: g.values.filter((_, j) => j !== vi) } : g
+      )
+    );
+  }
+  function setValueLabel(gi: number, vi: number, label: string) {
+    setVariants(
+      variants.map((g, i) =>
+        i === gi
+          ? { ...g, values: g.values.map((v, j) => (j === vi ? { ...v, label } : v)) }
+          : g
+      )
+    );
+  }
+  function setValueDelta(gi: number, vi: number, raw: string) {
+    const priceDelta = raw === "" ? undefined : Number(raw);
+    setVariants(
+      variants.map((g, i) =>
+        i === gi
+          ? {
+              ...g,
+              values: g.values.map((v, j) =>
+                j === vi ? { ...v, priceDelta } : v
+              ),
+            }
+          : g
+      )
+    );
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -206,6 +263,96 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
               placeholder="Impression 3D SLS à la demande…"
             />
           </div>
+        </fieldset>
+
+        <fieldset className="space-y-5 rounded-2xl border border-border p-6">
+          <legend className="px-2 text-sm font-semibold">Déclinaisons</legend>
+          <p className="text-xs text-muted">
+            Groupes d’options façon boutique (ex. « Verres », « Branches »).
+            Chaque valeur peut ajouter un supplément au prix de base.
+          </p>
+
+          {variants.map((group, gi) => (
+            <div key={gi} className="space-y-4 rounded-xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <Input
+                  value={group.name}
+                  onChange={(e) => renameGroup(gi, e.target.value)}
+                  placeholder="Nom du groupe (ex. Verres)"
+                  aria-label={`Nom du groupe ${gi + 1}`}
+                  maxLength={60}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Supprimer le groupe"
+                  onClick={() => removeGroup(gi)}
+                >
+                  <Trash2 className="h-4 w-4 text-red-600" />
+                </Button>
+              </div>
+
+              <ul className="space-y-2">
+                {group.values.map((v, vi) => (
+                  <li key={vi} className="flex items-center gap-2">
+                    <Input
+                      value={v.label}
+                      onChange={(e) => setValueLabel(gi, vi, e.target.value)}
+                      placeholder="Valeur (ex. Solaires)"
+                      aria-label={`Valeur ${vi + 1} du groupe ${gi + 1}`}
+                      maxLength={60}
+                    />
+                    <div className="relative w-32 shrink-0">
+                      <Input
+                        type="number"
+                        step="1"
+                        value={v.priceDelta ?? ""}
+                        onChange={(e) => setValueDelta(gi, vi, e.target.value)}
+                        placeholder="+ $"
+                        aria-label={`Supplément de la valeur ${vi + 1} du groupe ${gi + 1}`}
+                        className="pr-7"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">
+                        $
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Supprimer la valeur"
+                      disabled={group.values.length <= 1}
+                      onClick={() => removeValue(gi, vi)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={group.values.length >= 12}
+                onClick={() => addValue(gi)}
+              >
+                <Plus className="h-4 w-4" /> Ajouter une valeur
+              </Button>
+            </div>
+          ))}
+
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            disabled={variants.length >= 6}
+            onClick={addGroup}
+          >
+            <Plus className="h-4 w-4" /> Ajouter un groupe
+          </Button>
         </fieldset>
 
         <SeoFields

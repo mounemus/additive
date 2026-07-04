@@ -17,6 +17,10 @@ import {
  * Le back-office, lui, exige une vraie base.
  */
 
+/** Groupe de déclinaisons (« Verres », « Branches »…) façon WooCommerce. */
+export type VariantValue = { label: string; priceDelta?: number };
+export type VariantGroup = { name: string; values: VariantValue[] };
+
 export type CatalogProduct = {
   id: string;
   name: string;
@@ -31,6 +35,7 @@ export type CatalogProduct = {
   features: string[];
   isFeatured: boolean;
   model3dUrl: string | null;
+  variants: VariantGroup[];
   image: string;
   images: { url: string; alt: string | null }[];
   collection: { name: string; slug: string } | null;
@@ -104,6 +109,52 @@ function localModelUrl(slug: string): string | null {
   return url;
 }
 
+/**
+ * Les GLB hébergés sur buypukka.ca (WordPress) n'envoient pas de CORS et
+ * l'hôte n'est pas dans notre CSP connect-src : on les sert via le proxy
+ * same-origin /api/model-proxy. Les URL Vercel Blob / locales passent telles
+ * quelles.
+ */
+const PROXIED_MODEL_PREFIX = "https://buypukka.ca";
+
+function proxiedModelUrl(url: string | null): string | null {
+  if (!url) return url;
+  if (url.startsWith(PROXIED_MODEL_PREFIX)) {
+    return `/api/model-proxy?src=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+/**
+ * Parse défensif du Json `variants` stocké en base : on ne garde que les
+ * groupes bien formés ({name, values[{label, priceDelta?}]}), tableau vide
+ * pour tout le reste (null, format inattendu, données héritées…).
+ */
+export function parseVariants(raw: unknown): VariantGroup[] {
+  if (!Array.isArray(raw)) return [];
+  const groups: VariantGroup[] = [];
+  for (const g of raw) {
+    if (!g || typeof g !== "object") continue;
+    const name = (g as { name?: unknown }).name;
+    const values = (g as { values?: unknown }).values;
+    if (typeof name !== "string" || !name.trim() || !Array.isArray(values)) continue;
+    const clean: VariantValue[] = [];
+    for (const v of values) {
+      if (!v || typeof v !== "object") continue;
+      const label = (v as { label?: unknown }).label;
+      const priceDelta = (v as { priceDelta?: unknown }).priceDelta;
+      if (typeof label !== "string" || !label.trim()) continue;
+      clean.push(
+        typeof priceDelta === "number" && Number.isFinite(priceDelta) && priceDelta !== 0
+          ? { label, priceDelta }
+          : { label }
+      );
+    }
+    if (clean.length) groups.push({ name, values: clean });
+  }
+  return groups;
+}
+
 function staticCollectionToCatalog(c: StaticCollection): CatalogCollection {
   return {
     id: `static-${c.slug}`,
@@ -136,6 +187,7 @@ function staticProductToCatalog(p: StaticProduct): CatalogProduct {
     features: p.features,
     isFeatured: p.isFeatured,
     model3dUrl: localModelUrl(p.slug),
+    variants: [],
     image: p.image,
     images: [{ url: p.image, alt: p.name }],
     collection: col ? { name: col.name, slug: col.slug } : null,
@@ -158,6 +210,7 @@ function dbProductToCatalog(p: {
   features: string[];
   isFeatured: boolean;
   model3dUrl: string | null;
+  variants?: unknown;
   seoTitle: string | null;
   seoDescription: string | null;
   images: { url: string; alt: string | null }[];
@@ -176,7 +229,8 @@ function dbProductToCatalog(p: {
     dimensions: p.dimensions,
     features: p.features,
     isFeatured: p.isFeatured,
-    model3dUrl: p.model3dUrl || localModelUrl(p.slug),
+    model3dUrl: proxiedModelUrl(p.model3dUrl) || localModelUrl(p.slug),
+    variants: parseVariants(p.variants),
     image: p.images[0]?.url ?? "/images/products/placeholder.svg",
     images: p.images.map((i) => ({ url: i.url, alt: i.alt })),
     collection: p.collection,

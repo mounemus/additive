@@ -107,6 +107,23 @@ export const pricingAdminSchema = z.object({
   marginRate: z.number().min(0).max(1),
 });
 
+// ── Déclinaisons produit (type WooCommerce : verres, branches…) ─────────────
+export const variantGroupSchema = z.object({
+  name: z.string().min(1, "Nom du groupe requis").max(60),
+  values: z
+    .array(
+      z.object({
+        label: z.string().min(1, "Libellé requis").max(60),
+        // Supplément (ou remise) appliqué au prix de base, en devise produit.
+        priceDelta: z.coerce.number().min(-100000).max(100000).optional(),
+      })
+    )
+    .min(1, "Au moins une valeur par groupe")
+    .max(12, "12 valeurs maximum par groupe"),
+});
+
+export type VariantGroupInput = z.infer<typeof variantGroupSchema>;
+
 export const productSchema = z.object({
   name: z.string().min(1, "Nom requis").max(160),
   slug: z
@@ -127,6 +144,7 @@ export const productSchema = z.object({
     .array(z.object({ url: z.string().min(1), alt: z.string().max(200).optional().or(z.literal("")) }))
     .default([]),
   model3dUrl: z.string().max(1000).optional().or(z.literal("")),
+  variants: z.array(variantGroupSchema).max(6, "6 groupes maximum").default([]),
   customizable: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   isPublished: z.boolean().default(false),

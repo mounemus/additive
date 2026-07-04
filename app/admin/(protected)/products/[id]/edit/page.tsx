@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { safeQuery } from "@/lib/admin";
 import { ProductForm } from "@/components/admin/product-form";
+import { parseVariants } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export default async function EditProductPage({
           features: product.features,
           images: product.images.map((i) => ({ url: i.url, alt: i.alt ?? "" })),
           model3dUrl: product.model3dUrl ?? "",
+          variants: parseVariants(product.variants),
           customizable: product.customizable,
           isFeatured: product.isFeatured,
           isPublished: product.isPublished,

@@ -18,7 +18,10 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' data: blob: https://cdn.jsdelivr.net https://storage.googleapis.com https://www.gstatic.com",
+  // *.public.blob.vercel-storage.com : GLB téléversés depuis l'admin (Vercel
+  // Blob) — model-viewer les télécharge en fetch() côté client. Les GLB
+  // hébergés sur buypukka.ca passent, eux, par /api/model-proxy (même origine).
+  "connect-src 'self' data: blob: https://cdn.jsdelivr.net https://storage.googleapis.com https://www.gstatic.com https://*.public.blob.vercel-storage.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "frame-ancestors 'none'",
