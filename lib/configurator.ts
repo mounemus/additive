@@ -456,8 +456,9 @@ export function buildWornPortraitPromptFr(
 }
 
 /**
- * Prompt façade transparente pour l'essayage AR : la FACE seule de la monture,
- * branches coupées aux charnières, cadrage bord à bord (l'overlay est ensuite
+ * Prompt façade transparente pour l'essayage AR : la FACE de la monture avec
+ * les amorces de charnières et un léger départ de branches (rendu moins
+ * tronqué qu'une coupe nette), cadrage bord à bord (l'overlay est ensuite
  * rogné sur l'alpha et ancré aux landmarks).
  */
 export function buildFrameOverlayPromptFr(
@@ -473,9 +474,10 @@ export function buildFrameOverlayPromptFr(
     : (pal.colors[1] ?? pal.colors[0]);
   const material = product?.materials?.length ? product.materials.join(", ") : pal.material;
   return [
-    "Vue strictement de face de la SEULE façade d'une monture de lunettes",
-    `imprimée en 3D « ${concept.label} » (branches coupées net aux charnières,`,
-    "ne montrer que la face avant avec les deux cercles et le pont).",
+    "Vue strictement de face de la façade d'une monture de lunettes",
+    `imprimée en 3D « ${concept.label} » (façade avec les amorces de charnières`,
+    "et 1 cm de départ de branches visibles de face, perspective frontale —",
+    "montrer la face avant avec les deux cercles, le pont et ces courts départs de branches).",
     concept.summary,
     `Matière ${material}, couleur ${colors} — respecte scrupuleusement cette couleur.`,
     "Cadrage serré bord à bord, monture centrée et horizontale, occupant toute la largeur,",

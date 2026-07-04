@@ -170,13 +170,19 @@ export function FaceTryon({
           // Les verres se centrent sur les PUPILLES : ancrage un peu SOUS la
           // ligne des yeux (et non au niveau des sourcils).
           const cy = (eL.y + eR.y) / 2 + templeDist * 0.04;
-          // Angle de la ligne des tempes ORDONNÉE gauche→droite EN ESPACE ÉCRAN.
-          // Après le miroir, 234/454 s'inversent : sans cet ordre, atan2 rend
-          // ±180° (façade dessinée à l'envers) et le filtre devient instable au
-          // passage +π/−π (monture qui tournoie). Ici l'angle reste borné ±90°.
-          const left = tA.x <= tB.x ? tA : tB;
-          const right = tA.x <= tB.x ? tB : tA;
-          const a = Math.atan2(right.y - left.y, right.x - left.x);
+          // Angle (roll) : moyenne de la ligne des TEMPES et de la ligne des
+          // YEUX, chacune ORDONNÉE gauche→droite EN ESPACE ÉCRAN. Après le
+          // miroir, les paires s'inversent : sans cet ordre, atan2 rend ±180°
+          // (façade dessinée à l'envers) et le filtre devient instable au
+          // passage +π/−π (monture qui tournoie). Chaque angle reste borné
+          // ±90° ; la moyenne des deux lignes est plus stable en rotation
+          // légère que la seule ligne des tempes.
+          const lineAngle = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
+            const left = p1.x <= p2.x ? p1 : p2;
+            const right = p1.x <= p2.x ? p2 : p1;
+            return Math.atan2(right.y - left.y, right.x - left.x);
+          };
+          const a = (lineAngle(tA, tB) + lineAngle(eL, eR)) / 2;
 
           // Filtre One-Euro : stable à l'arrêt, réactif en mouvement.
           if (!filtersRef.current) filtersRef.current = makeFilters();
