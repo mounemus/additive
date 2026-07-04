@@ -5,6 +5,8 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Rotate3d } from "lucide-react";
 import { Model3DViewer } from "@/components/product/model-3d-viewer";
+import { useProductColor } from "@/components/product/product-color-context";
+import { colorHex } from "@/components/product/color-dots";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
 
@@ -49,6 +51,16 @@ export function ProductGallery({
   const current = views[active] ?? views[0];
   const posterUrl = photos[0]?.kind === "image" ? photos[0].url : undefined;
 
+  // Coloris choisi sur la fiche (ProductColorProvider) : recolore le GLB du
+  // visualiseur principal. Le GLB représente déjà le coloris par défaut → on
+  // n'applique un hex que si la sélection en diffère (même logique que
+  // l'essayage 3D). Hex inconnu ou hors provider → matériaux d'origine.
+  const [selectedColor, , defaultColor] = useProductColor(null);
+  const frameColorHex =
+    selectedColor && selectedColor !== defaultColor
+      ? colorHex(selectedColor)
+      : null;
+
   return (
     <div>
       <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-[#0a0a0a]">
@@ -59,6 +71,7 @@ export function ProductGallery({
               alt={`${name} — ${LABELS.tab3d[locale]}`}
               poster={posterUrl}
               locale={locale}
+              frameColorHex={frameColorHex}
               className="absolute inset-0 h-full w-full"
             />
             <p className="pointer-events-none absolute right-4 top-4 rounded-full bg-black/45 px-3 py-1.5 text-xs text-white backdrop-blur">

@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "translate:products": "tsx --conditions=react-server scripts/translate-products.ts",
     "studio": "prisma studio",
     "postinstall": "prisma generate"
   },

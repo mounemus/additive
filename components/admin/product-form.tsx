@@ -30,6 +30,8 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
     slug: initial?.slug ?? "",
     shortDescription: initial?.shortDescription ?? "",
     description: initial?.description ?? "",
+    shortDescriptionEn: initial?.shortDescriptionEn ?? "",
+    descriptionEn: initial?.descriptionEn ?? "",
     price: initial?.price ?? null,
     currency: initial?.currency ?? "CAD",
     collectionId: initial?.collectionId ?? "",
@@ -182,6 +184,27 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
               rows={6}
               value={state.description ?? ""}
               onChange={(e) => set("description", e.target.value)}
+            />
+          </div>
+          {/* Traductions EN optionnelles : vides = repli sur le français. */}
+          <div className="space-y-2">
+            <Label htmlFor="shortDescriptionEn">Description courte (EN)</Label>
+            <Textarea
+              id="shortDescriptionEn"
+              rows={2}
+              value={state.shortDescriptionEn ?? ""}
+              onChange={(e) => set("shortDescriptionEn", e.target.value)}
+              placeholder="Optionnel — affichée sur les pages /en"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="descriptionEn">Description (EN)</Label>
+            <Textarea
+              id="descriptionEn"
+              rows={6}
+              value={state.descriptionEn ?? ""}
+              onChange={(e) => set("descriptionEn", e.target.value)}
+              placeholder="Optionnel — affichée sur les pages /en"
             />
           </div>
           <div className="grid gap-5 sm:grid-cols-3">

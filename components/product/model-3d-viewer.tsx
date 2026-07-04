@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { Box, ImageOff, Loader2, Scan } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
@@ -36,23 +36,101 @@ const LABELS = {
 
 type ViewerStatus = "loading" | "ready" | "failed";
 
+// ── Recoloration de la MONTURE via l'API matériaux de model-viewer ──────────
+// Même heuristique que l'essayage 3D (tryon-3d.tsx) : les matériaux « verres »
+// (nom lens/verre/glass/… ou transparents) sont exclus, les autres reçoivent
+// pbrMetallicRoughness.setBaseColorFactor — la texture reste multipliée par le
+// facteur, le grain du matériau est donc préservé.
+
+const LENS_LABEL_RE = /lens|verre|glass|vitre|crystal|optic/i;
+
+/** Sous-ensemble non typé de l'API Material de <model-viewer>. */
+type MvMaterial = {
+  name?: string;
+  getAlphaMode?: () => string;
+  pbrMetallicRoughness?: {
+    baseColorFactor?: ArrayLike<number>;
+    setBaseColorFactor?: (rgba: [number, number, number, number]) => void;
+  };
+};
+
+function hexToRgb01(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
 export function Model3DViewer({
   src,
   alt = "Modèle 3D",
   className,
   poster,
   locale = "fr",
+  frameColorHex = null,
 }: {
   src: string;
   alt?: string;
   className?: string;
   poster?: string;
   locale?: Locale;
+  /** Coloris de MONTURE (hex) appliqué aux matériaux non-verres ; null = origine. */
+  frameColorHex?: string | null;
 }) {
   const [scriptReady, setScriptReady] = useState(false);
   const [status, setStatus] = useState<ViewerStatus>("loading");
   const [reducedMotion, setReducedMotion] = useState(false);
   const viewerRef = useRef<HTMLElement | null>(null);
+  // Facteurs baseColor d'ORIGINE par matériau (restaurés quand hex = null).
+  const origColorsRef = useRef(new Map<object, [number, number, number, number]>());
+  const frameColorRef = useRef<string | null>(frameColorHex);
+
+  /**
+   * Applique (ou restaure) la couleur de monture sur le modèle chargé.
+   * Si aucun matériau de monture n'est identifiable, ne fait rien — le
+   * visualiseur reste intact quoi qu'il arrive (try/catch par matériau).
+   */
+  const applyFrameColor = useCallback((hex: string | null) => {
+    const viewer = viewerRef.current as unknown as {
+      model?: { materials?: MvMaterial[] };
+    } | null;
+    const materials = viewer?.model?.materials;
+    if (!materials || !materials.length) return;
+    const rgb = hex ? hexToRgb01(hex) : null;
+    for (const mat of materials) {
+      try {
+        const pbr = mat?.pbrMetallicRoughness;
+        if (!pbr?.setBaseColorFactor) continue;
+        const stored = origColorsRef.current.get(mat as object);
+        const raw = stored ?? Array.from(pbr.baseColorFactor ?? [1, 1, 1, 1]);
+        const factor: [number, number, number, number] = [
+          raw[0] ?? 1,
+          raw[1] ?? 1,
+          raw[2] ?? 1,
+          raw[3] ?? 1,
+        ];
+        // Heuristique « verre » identique à tryon-3d : nom évocateur, ou
+        // matériau en blending avec alpha nettement transparent.
+        const alphaMode =
+          typeof mat.getAlphaMode === "function" ? mat.getAlphaMode() : "OPAQUE";
+        const isLens =
+          LENS_LABEL_RE.test(String(mat.name ?? "")) ||
+          (alphaMode === "BLEND" && factor[3] < 0.9);
+        if (isLens) continue;
+        if (!stored) origColorsRef.current.set(mat as object, factor);
+        if (rgb) pbr.setBaseColorFactor([rgb[0], rgb[1], rgb[2], factor[3]]);
+        else pbr.setBaseColorFactor(factor);
+      } catch {
+        // Matériau atypique : ignoré, jamais bloquant.
+      }
+    }
+  }, []);
+
+  // Ré-application au changement de coloris, sans recharger le GLB.
+  useEffect(() => {
+    frameColorRef.current = frameColorHex;
+    if (status === "ready") applyFrameColor(frameColorHex);
+  }, [frameColorHex, status, applyFrameColor]);
 
   // Respecte prefers-reduced-motion : pas d'auto-rotation.
   useEffect(() => {
@@ -101,7 +179,12 @@ export function Model3DViewer({
     if (!scriptReady) return;
     const el = viewerRef.current;
     if (!el) return;
-    const onLoad = () => setStatus("ready");
+    const onLoad = () => {
+      // Nouveau modèle : facteurs d'origine à re-capturer, coloris ré-appliqué.
+      origColorsRef.current = new Map();
+      applyFrameColor(frameColorRef.current);
+      setStatus("ready");
+    };
     const onError = () => setStatus("failed");
     el.addEventListener("load", onLoad);
     el.addEventListener("error", onError);
@@ -109,7 +192,7 @@ export function Model3DViewer({
       el.removeEventListener("load", onLoad);
       el.removeEventListener("error", onError);
     };
-  }, [scriptReady, src]);
+  }, [scriptReady, src, applyFrameColor]);
 
   // Repli propre : image produit + mention discrète (plus de spinner infini).
   if (status === "failed") {

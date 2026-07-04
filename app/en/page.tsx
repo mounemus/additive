@@ -35,7 +35,7 @@ export const metadata = buildMetadata({
 export default async function EnglishHomePage() {
   const [collections, featured, media] = await Promise.all([
     getCollections(),
-    getProducts({ featuredOnly: true }),
+    getProducts({ featuredOnly: true, locale: "en" }),
     getMedia(),
   ]);
 

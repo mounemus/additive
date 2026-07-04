@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetails } from "@/components/product/product-details";
+import { ProductColorProvider } from "@/components/product/product-color-context";
 import { ModulairVideo } from "@/components/configurator/modulair-video";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const product = await getProduct(params.slug);
+  const product = await getProduct(params.slug, "en");
   if (!product) return buildMetadata({ title: "Model", locale: "en" });
   return buildMetadata({
     title: `${product.name} — 3D-printed frame`,
@@ -61,10 +62,10 @@ export default async function EnglishProductPage({
 }: {
   params: { slug: string };
 }) {
-  const product = await getProduct(params.slug);
+  const product = await getProduct(params.slug, "en");
   if (!product) notFound();
 
-  const related = await getRelatedProducts(product);
+  const related = await getRelatedProducts(product, 3, "en");
 
   return (
     <>
@@ -77,19 +78,23 @@ export default async function EnglishProductPage({
       />
       <section className="pb-14 pt-28 md:pt-32">
         <div className="container grid gap-12 lg:grid-cols-[1.15fr_1fr]">
-          <FadeIn y={16}>
-            {/* The navigable 3D viewer is the gallery's primary tab whenever
-                a model exists (photos become thumbnails). */}
-            <ProductGallery
-              images={product.images}
-              name={product.name}
-              model3dUrl={product.model3dUrl}
-              locale="en"
-            />
-          </FadeIn>
-          <FadeIn y={16} delay={0.1}>
-            <ProductDetails product={product} locale="en" />
-          </FadeIn>
+          {/* Colour selection is shared between details and gallery: picking
+              a colour recolours the GLB in the main 3D viewer. */}
+          <ProductColorProvider defaultColor={product.colors[0] ?? null}>
+            <FadeIn y={16}>
+              {/* The navigable 3D viewer is the gallery's primary tab whenever
+                  a model exists (photos become thumbnails). */}
+              <ProductGallery
+                images={product.images}
+                name={product.name}
+                model3dUrl={product.model3dUrl}
+                locale="en"
+              />
+            </FadeIn>
+            <FadeIn y={16} delay={0.1}>
+              <ProductDetails product={product} locale="en" />
+            </FadeIn>
+          </ProductColorProvider>
         </div>
       </section>
 
@@ -100,7 +105,7 @@ export default async function EnglishProductPage({
               The design story
             </h2>
             <FadeIn>
-              {/* Description affichée telle quelle (contenu DB, déjà rédigé en anglais). */}
+              {/* Contenu EN : descriptionEn en base, avec repli FR (lib/catalog). */}
               <p className="text-lg leading-relaxed text-muted">
                 {product.description}
               </p>

@@ -65,7 +65,7 @@ export default async function EnglishCollectionPage({
   const collection = await getCollection(params.slug);
   if (!collection) notFound();
 
-  const products = await getProducts({ collectionSlug: collection.slug });
+  const products = await getProducts({ collectionSlug: collection.slug, locale: "en" });
   const pillars = COLLECTION_PILLARS[collection.slug] ?? [];
 
   return (

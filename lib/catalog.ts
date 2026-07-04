@@ -21,6 +21,14 @@ import {
 export type VariantValue = { label: string; priceDelta?: number };
 export type VariantGroup = { name: string; values: VariantValue[] };
 
+/**
+ * Locale de contenu : `description`/`shortDescription` en base sont LE
+ * FRANÇAIS ; en "en", on sert les champs `descriptionEn`/`shortDescriptionEn`
+ * avec repli FR quand ils sont vides. Le contenu statique reste FR partout
+ * (repli EN = FR).
+ */
+export type CatalogLocale = "fr" | "en";
+
 export type CatalogProduct = {
   id: string;
   name: string;
@@ -196,12 +204,14 @@ function staticProductToCatalog(p: StaticProduct): CatalogProduct {
   };
 }
 
-function dbProductToCatalog(p: {
+export function dbProductToCatalog(p: {
   id: string;
   name: string;
   slug: string;
   shortDescription: string | null;
   description: string | null;
+  shortDescriptionEn?: string | null;
+  descriptionEn?: string | null;
   price: number | null;
   currency: string;
   colors: string[];
@@ -215,13 +225,20 @@ function dbProductToCatalog(p: {
   seoDescription: string | null;
   images: { url: string; alt: string | null }[];
   collection: { name: string; slug: string } | null;
-}): CatalogProduct {
+}, locale: CatalogLocale = "fr"): CatalogProduct {
+  // EN : champs traduits s'ils sont renseignés, repli FR sinon.
+  const shortDescription =
+    locale === "en" && p.shortDescriptionEn?.trim()
+      ? p.shortDescriptionEn
+      : p.shortDescription;
+  const description =
+    locale === "en" && p.descriptionEn?.trim() ? p.descriptionEn : p.description;
   return {
     id: p.id,
     name: p.name,
     slug: p.slug,
-    shortDescription: stripShortcodes(p.shortDescription),
-    description: stripShortcodes(p.description),
+    shortDescription: stripShortcodes(shortDescription),
+    description: stripShortcodes(description),
     price: p.price,
     currency: p.currency,
     colors: p.colors,
@@ -239,10 +256,66 @@ function dbProductToCatalog(p: {
   };
 }
 
-const productInclude = {
+/**
+ * Sélections produit explicites. Les colonnes `descriptionEn` /
+ * `shortDescriptionEn` peuvent ne pas encore exister en base (le code est
+ * déployé avant le `prisma db push`) : on tente d'abord la requête complète,
+ * puis on retombe sur la sélection SANS ces colonnes si la base répond
+ * « colonne inconnue » (P2022). Le repli est mémoïsé pour le process — les
+ * pages EN utilisent alors le français (repli normal).
+ */
+const productSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  shortDescription: true,
+  description: true,
+  price: true,
+  currency: true,
+  colors: true,
+  materials: true,
+  dimensions: true,
+  features: true,
+  isFeatured: true,
+  isPublished: true,
+  model3dUrl: true,
+  variants: true,
+  seoTitle: true,
+  seoDescription: true,
   images: { orderBy: { order: "asc" as const } },
   collection: { select: { name: true, slug: true } },
 };
+
+const productSelectEn = {
+  ...productSelect,
+  shortDescriptionEn: true,
+  descriptionEn: true,
+};
+
+let enColumnsMissing = false;
+
+function isMissingColumnError(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { code?: unknown }).code === "P2022"
+  );
+}
+
+async function withEnFallback<T>(
+  withEn: () => Promise<T>,
+  withoutEn: () => Promise<T>
+): Promise<T> {
+  if (!enColumnsMissing) {
+    try {
+      return await withEn();
+    } catch (e) {
+      if (!isMissingColumnError(e)) throw e;
+      enColumnsMissing = true;
+    }
+  }
+  return withoutEn();
+}
 
 export async function getCollections(): Promise<CatalogCollection[]> {
   try {
@@ -283,19 +356,26 @@ export async function getCollection(
 export async function getProducts(filter?: {
   collectionSlug?: string;
   featuredOnly?: boolean;
+  /** "en" : descriptions traduites (repli FR). Défaut "fr". */
+  locale?: CatalogLocale;
 }): Promise<CatalogProduct[]> {
+  const locale: CatalogLocale = filter?.locale ?? "fr";
   try {
-    const rows = await db.product.findMany({
-      where: {
-        isPublished: true,
-        ...(filter?.collectionSlug
-          ? { collection: { slug: filter.collectionSlug } }
-          : {}),
-        ...(filter?.featuredOnly ? { isFeatured: true } : {}),
-      },
-      orderBy: [{ isFeatured: "desc" }, { createdAt: "asc" }],
-      include: productInclude,
-    });
+    const where = {
+      isPublished: true,
+      ...(filter?.collectionSlug
+        ? { collection: { slug: filter.collectionSlug } }
+        : {}),
+      ...(filter?.featuredOnly ? { isFeatured: true } : {}),
+    };
+    const orderBy = [
+      { isFeatured: "desc" as const },
+      { createdAt: "asc" as const },
+    ];
+    const rows = await withEnFallback(
+      () => db.product.findMany({ where, orderBy, select: productSelectEn }),
+      () => db.product.findMany({ where, orderBy, select: productSelect })
+    );
     if (rows.length === 0 && !filter?.collectionSlug && !filter?.featuredOnly) {
       return PRODUCTS.map(staticProductToCatalog);
     }
@@ -306,7 +386,7 @@ export async function getProducts(filter?: {
           (!filter?.featuredOnly || p.isFeatured)
       ).map(staticProductToCatalog);
     }
-    return rows.map(dbProductToCatalog);
+    return rows.map((row) => dbProductToCatalog(row, locale));
   } catch {
     return PRODUCTS.filter(
       (p) =>
@@ -316,13 +396,16 @@ export async function getProducts(filter?: {
   }
 }
 
-export async function getProduct(slug: string): Promise<CatalogProduct | null> {
+export async function getProduct(
+  slug: string,
+  locale: CatalogLocale = "fr"
+): Promise<CatalogProduct | null> {
   try {
-    const row = await db.product.findUnique({
-      where: { slug },
-      include: productInclude,
-    });
-    if (row && row.isPublished) return dbProductToCatalog(row);
+    const row = await withEnFallback(
+      () => db.product.findUnique({ where: { slug }, select: productSelectEn }),
+      () => db.product.findUnique({ where: { slug }, select: productSelect })
+    );
+    if (row && row.isPublished) return dbProductToCatalog(row, locale);
     if (row) return null;
   } catch {
     // repli statique ci-dessous
@@ -333,9 +416,10 @@ export async function getProduct(slug: string): Promise<CatalogProduct | null> {
 
 export async function getRelatedProducts(
   product: CatalogProduct,
-  limit = 3
+  limit = 3,
+  locale: CatalogLocale = "fr"
 ): Promise<CatalogProduct[]> {
-  const all = await getProducts();
+  const all = await getProducts({ locale });
   return all
     .filter((p) => p.slug !== product.slug)
     .sort((a, b) => {

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Sparkles, Feather, ShieldCheck, Leaf } from "lucide-react";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductDetails } from "@/components/product/product-details";
+import { ProductColorProvider } from "@/components/product/product-color-context";
 import { ModulairVideo } from "@/components/configurator/modulair-video";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -77,18 +78,22 @@ export default async function ProductPage({
       />
       <section className="pb-14 pt-28 md:pt-32">
         <div className="container grid gap-12 lg:grid-cols-[1.15fr_1fr]">
-          <FadeIn y={16}>
-            {/* Le visualiseur 3D navigable est l'onglet principal de la
-                galerie dès qu'un modèle existe (photos en miniatures). */}
-            <ProductGallery
-              images={product.images}
-              name={product.name}
-              model3dUrl={product.model3dUrl}
-            />
-          </FadeIn>
-          <FadeIn y={16} delay={0.1}>
-            <ProductDetails product={product} />
-          </FadeIn>
+          {/* Coloris synchronisé fiche ↔ galerie : changer le coloris
+              recolore le GLB du visualiseur 3D principal. */}
+          <ProductColorProvider defaultColor={product.colors[0] ?? null}>
+            <FadeIn y={16}>
+              {/* Le visualiseur 3D navigable est l'onglet principal de la
+                  galerie dès qu'un modèle existe (photos en miniatures). */}
+              <ProductGallery
+                images={product.images}
+                name={product.name}
+                model3dUrl={product.model3dUrl}
+              />
+            </FadeIn>
+            <FadeIn y={16} delay={0.1}>
+              <ProductDetails product={product} />
+            </FadeIn>
+          </ProductColorProvider>
         </div>
       </section>
 

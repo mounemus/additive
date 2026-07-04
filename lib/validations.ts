@@ -133,6 +133,9 @@ export const productSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug invalide (minuscules, chiffres, tirets)"),
   shortDescription: z.string().max(500).optional().or(z.literal("")),
   description: z.string().max(10000).optional().or(z.literal("")),
+  // Traductions anglaises optionnelles (les champs FR restent la référence).
+  shortDescriptionEn: z.string().max(500).optional().or(z.literal("")),
+  descriptionEn: z.string().max(10000).optional().or(z.literal("")),
   price: z.coerce.number().min(0).nullable().optional(),
   currency: z.string().default("CAD"),
   collectionId: z.string().optional().or(z.literal("")),

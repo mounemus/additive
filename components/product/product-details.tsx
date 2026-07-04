@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useProductColor } from "@/components/product/product-color-context";
 import { Check, Ruler, Layers, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,11 @@ export function ProductDetails({
   product: CatalogProduct;
   locale?: Locale;
 }) {
-  const [selectedColor, setSelectedColor] = useState(product.colors[0] ?? null);
+  // Coloris partagé avec la galerie (recoloration du visualiseur 3D principal)
+  // via ProductColorProvider ; état local en repli hors provider.
+  const [selectedColor, setSelectedColor] = useProductColor(
+    product.colors[0] ?? null
+  );
   // Sélection de variantes : { [nom de groupe]: libellé choisi }. Par défaut,
   // la première valeur de chaque groupe.
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>(

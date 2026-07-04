@@ -46,6 +46,8 @@ export async function PATCH(
         price: data.price ?? null,
         shortDescription: data.shortDescription || null,
         description: data.description || null,
+        shortDescriptionEn: data.shortDescriptionEn || null,
+        descriptionEn: data.descriptionEn || null,
         dimensions: data.dimensions || null,
         model3dUrl: data.model3dUrl || null,
         variants: data.variants,

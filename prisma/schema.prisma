@@ -15,6 +15,11 @@ model Product {
   slug             String         @unique
   shortDescription String?
   description      String?
+  // Traductions ANGLAISES du contenu rédactionnel : `description` /
+  // `shortDescription` sont LE FRANÇAIS ; les pages EN utilisent les champs
+  // *En avec repli FR quand ils sont vides.
+  shortDescriptionEn String?
+  descriptionEn      String?
   price            Float?
   currency         String         @default("CAD")
   collectionId     String?
