@@ -43,6 +43,8 @@ const nextConfig = {
       { protocol: "https", hostname: "utfs.io" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "buypukka.ca" },
+      // Médias téléversés depuis l'admin (Vercel Blob).
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
     ],
   },
   async headers() {

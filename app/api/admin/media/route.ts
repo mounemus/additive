@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { mediaSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
@@ -22,6 +23,11 @@ export async function POST(req: Request) {
         kind: parsed.data.kind,
       },
     });
+    // Audit : "upload" pour un fichier téléversé sur Vercel Blob (la création
+    // est faite côté client après l'upload direct — onUploadCompleted ne
+    // fonctionne pas en localhost), "create" pour une URL externe collée.
+    const isBlobUpload = /\.blob\.vercel-storage\.com\//.test(created.url);
+    logAudit(isBlobUpload ? "upload" : "create", "media", created.url);
     return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
   } catch (e) {
     console.error("[admin/media] create error:", e);

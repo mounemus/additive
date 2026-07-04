@@ -32,12 +32,13 @@ export function MediaManager({ assets }: { assets: Asset[] }) {
   const [kind, setKind] = useState("image");
   const [copied, setCopied] = useState<string | null>(null);
 
-  async function addAsset(url: string) {
-    await fetch("/api/admin/media", {
+  async function addAsset(url: string, assetKind?: string) {
+    const res = await fetch("/api/admin/media", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, kind }),
+      body: JSON.stringify({ url, kind: assetKind ?? kind }),
     });
+    if (!res.ok) throw new Error("media_create_failed");
     router.refresh();
   }
 
@@ -69,7 +70,7 @@ export function MediaManager({ assets }: { assets: Asset[] }) {
             ))}
           </Select>
         </div>
-        <MediaUploader onUploaded={addAsset} />
+        <MediaUploader selectedKind={kind} onUploaded={addAsset} />
       </div>
 
       {assets.length === 0 ? (
