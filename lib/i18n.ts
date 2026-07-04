@@ -279,6 +279,8 @@ type CustomizationStepsCopy = {
   paragraph: string;
   cta: string;
   imageAlt: string;
+  /** Cartouche technique du bandeau image pleine largeur (mono, uppercase). */
+  imageCaption: string;
   steps: { n: string; title: string; body: string }[];
 };
 
@@ -290,6 +292,7 @@ export const CUSTOMIZATION_STEPS_COPY: Record<Locale, CustomizationStepsCopy> = 
       "Forme, couleur, branches, verres, finitions : chaque paramètre se configure. Notre parcours guidé convertit vos préférences en concepts imprimables — et votre visage devient le point de départ du design.",
     cta: "Créer ma monture",
     imageAlt: "Vue éclatée des composants modulaires — ADDITIVE",
+    imageCaption: "VUE ÉCLATÉE · COMPOSANTS MODULAIRES · NYLON PA12 FRITTÉ",
     steps: [
       { n: "01", title: "Choisir une base", body: "Partez d’une monture de la collection ou d’une feuille blanche." },
       { n: "02", title: "Sélectionner la forme", body: "Panto, rectangulaire, sculpturale : la géométrie qui vous va." },
@@ -309,6 +312,7 @@ export const CUSTOMIZATION_STEPS_COPY: Record<Locale, CustomizationStepsCopy> = 
       "Shape, colour, temples, lenses, finishes: every parameter can be configured. Our guided journey turns your preferences into printable concepts — and your face becomes the design’s starting point.",
     cta: "Create my frame",
     imageAlt: "Exploded view of the modular components — ADDITIVE",
+    imageCaption: "EXPLODED VIEW · MODULAR COMPONENTS · SINTERED PA12 NYLON",
     steps: [
       { n: "01", title: "Choose a base", body: "Start from a frame in the collection — or from a blank page." },
       { n: "02", title: "Select the shape", body: "Panto, rectangular, sculptural: the geometry that suits you." },

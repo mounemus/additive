@@ -21,8 +21,11 @@ export function CustomizationSteps({
   return (
     <section className="py-14 md:py-20">
       <div className="container">
-        <div className="grid items-start gap-12 lg:grid-cols-[1fr_1.4fr]">
-          <div className="lg:sticky lg:top-28">
+        {/* Deux colonnes équilibrées : texte + CTA centrés verticalement face
+            à la grille — l'image éclatée passe en bandeau pleine largeur
+            dessous (zéro vide résiduel sous la grille). */}
+        <div className="grid gap-12 lg:grid-cols-[1fr_1.4fr] lg:items-center">
+          <div>
             <FadeIn>
               <p className="eyebrow mb-4">{copy.eyebrow}</p>
             </FadeIn>
@@ -38,20 +41,12 @@ export function CustomizationSteps({
                 </Button>
               </Link>
             </FadeIn>
-            <FadeIn delay={0.2}>
-              <RevealImage
-                src="/images/editorial/exploded-modulair.png"
-                alt={copy.imageAlt}
-                className="mt-8 hidden aspect-[4/3] rounded-3xl lg:block"
-                sizes="40vw"
-              />
-            </FadeIn>
           </div>
 
           <Stagger className="grid gap-4 sm:grid-cols-2">
             {steps.map((step) => (
-              <StaggerItem key={step.n}>
-                <div className="group rounded-2xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover">
+              <StaggerItem key={step.n} className="h-full">
+                <div className="group h-full rounded-2xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover">
                   <p className="font-display text-sm font-bold text-accent-blue">
                     {step.n}
                   </p>
@@ -62,6 +57,26 @@ export function CustomizationSteps({
             ))}
           </Stagger>
         </div>
+
+        {/* Bandeau image éclatée pleine largeur — 21/9, léger voile + cartouche
+            technique (masqué sous lg, comme l'ancienne image de colonne). */}
+        <FadeIn delay={0.15} className="mt-12 hidden lg:block">
+          <div className="relative overflow-hidden rounded-3xl">
+            <RevealImage
+              src="/images/editorial/exploded-modulair.png"
+              alt={copy.imageAlt}
+              className="aspect-[21/9]"
+              sizes="(max-width: 1400px) 90vw, 1272px"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/55 via-black/10 to-transparent"
+            />
+            <span className="absolute bottom-4 left-5 z-20 font-mono text-[10px] uppercase tracking-[0.25em] text-white/85">
+              {copy.imageCaption}
+            </span>
+          </div>
+        </FadeIn>
       </div>
     </section>
   );

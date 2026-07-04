@@ -26,7 +26,7 @@ export function MatterBand({ locale = "fr" }: { locale?: Locale }) {
   return (
     <section className="overflow-hidden py-14 md:py-20">
       <div className="container">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-x-24">
           {/* Panneau laboratoire : couches SLS empilées + macro matière */}
           <div className="relative">
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-surface">
@@ -71,7 +71,7 @@ export function MatterBand({ locale = "fr" }: { locale?: Locale }) {
                 />
               )}
               {/* Légende technique — bandeau haut sur scrim, lisible en entier
-                  (hors de la zone du médaillon macro, bas-droit) */}
+                  (le médaillon macro est ancré mi-hauteur sur le bord droit) */}
               <div
                 aria-hidden
                 className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/65 via-black/30 to-transparent px-5 pb-10 pt-4"
@@ -82,19 +82,24 @@ export function MatterBand({ locale = "fr" }: { locale?: Locale }) {
               </div>
             </div>
 
-            {/* Macro matière en médaillon — ancré coin bas-droit, décalé vers
-                l'extérieur, détouré du panneau par un ring couleur fond */}
-            <FadeIn delay={0.2} className="absolute -bottom-6 -right-4 hidden w-36 md:block lg:-right-8 lg:w-44">
-              <div className="overflow-hidden rounded-2xl border border-border shadow-card ring-4 ring-background">
-                <Image
-                  src="/images/editorial/macro-pa12.png"
-                  alt={locale === "en" ? "PA12 sintered nylon, macro view" : "Nylon PA12 fritté, vue macro"}
-                  width={352}
-                  height={352}
-                  className="aspect-square object-cover"
-                />
-              </div>
-            </FadeIn>
+            {/* Macro matière en médaillon — ancré à la jonction panneau/texte :
+                à cheval sur le bord droit du panneau (translate-x-1/2), centré
+                verticalement, détouré par un ring couleur fond + ombre. Le
+                translate est porté par ce wrapper (FadeIn anime transform et
+                écraserait des classes translate posées sur lui). */}
+            <div className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 translate-x-1/2 lg:block">
+              <FadeIn delay={0.2} className="w-40">
+                <div className="overflow-hidden rounded-2xl border border-border shadow-card ring-4 ring-background">
+                  <Image
+                    src="/images/editorial/macro-pa12.png"
+                    alt={locale === "en" ? "PA12 sintered nylon, macro view" : "Nylon PA12 fritté, vue macro"}
+                    width={352}
+                    height={352}
+                    className="aspect-square object-cover"
+                  />
+                </div>
+              </FadeIn>
+            </div>
           </div>
 
           {/* Texte + indicateurs */}
