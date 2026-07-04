@@ -6,6 +6,7 @@ import { Check, Ruler, Layers, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MagneticButton } from "@/components/motion/magnetic-button";
+import { ProductTryon } from "@/components/product/product-tryon";
 import { formatPrice, cn } from "@/lib/utils";
 import type { CatalogProduct } from "@/lib/catalog";
 import { t, type Locale } from "@/lib/i18n";
@@ -147,6 +148,9 @@ export function ProductDetails({
           </Button>
         </Link>
       </div>
+
+      {/* Essayage virtuel en direct — disponible sur TOUTES les fiches. */}
+      <ProductTryon product={product} locale={locale} />
 
       <div className="mt-10 space-y-6 border-t border-border pt-8">
         {product.materials.length > 0 && (
