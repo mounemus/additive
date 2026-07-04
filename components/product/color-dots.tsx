@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const COLOR_MAP: Record<string, string> = {
+export const COLOR_MAP: Record<string, string> = {
   black: "#111111",
   white: "#f5f5f2",
   blue: "#1f6fff",
@@ -11,6 +11,11 @@ const COLOR_MAP: Record<string, string> = {
   silver: "#d8d8d4",
   green: "#2e8b57",
 };
+
+/** Hex du coloris nommé (mapping du site), ou null si inconnu. */
+export function colorHex(name: string): string | null {
+  return COLOR_MAP[name.toLowerCase()] ?? null;
+}
 
 export function ColorDots({
   colors,

@@ -14,6 +14,8 @@ import {
   type PoseAngles,
 } from "@/components/configurator/face-tryon";
 import { getImageLandmarker } from "@/lib/face/mediapipe";
+import { Tryon3DLive, Tryon3DPhoto } from "@/components/product/tryon-3d";
+import { colorHex } from "@/components/product/color-dots";
 import type { CatalogProduct } from "@/lib/catalog";
 import type { Locale } from "@/lib/i18n";
 
@@ -25,6 +27,12 @@ import type { Locale } from "@/lib/i18n";
  * détection unique et façade ancrée dans un canvas statique).
  * La façade transparente du produit est générée par /api/configurator/
  * frame-overlay et mémorisée par produit dans sessionStorage.
+ *
+ * Si le produit possède un modèle 3D (product.model3dUrl), l'essayage passe
+ * en WebGL Three.js (Tryon3DLive / Tryon3DPhoto) : le GLB ENTIER (façade +
+ * branches) suit la pose 3D du visage avec occlusion crânienne, et des
+ * pastilles de couleurs recolorent le modèle en direct. Toute erreur
+ * (WebGL, GLB, contexte perdu) rebascule automatiquement sur l'essayage 2D.
  */
 
 // Chaînes locales au composant (FR/EN), cohérentes avec la prop `locale`.
@@ -72,6 +80,7 @@ const STRINGS = {
       "La génération du portrait est momentanément indisponible. Réessayez dans quelques instants.",
     portraitAlt: "Portrait photoréaliste avec la monture",
     regenerate: "Régénérer",
+    colorsLabel: "Coloris",
   },
   en: {
     open: "Try on my face",
@@ -115,6 +124,7 @@ const STRINGS = {
     portraitError: "Portrait generation is momentarily unavailable. Please try again shortly.",
     portraitAlt: "Photorealistic portrait with the frame",
     regenerate: "Regenerate",
+    colorsLabel: "Colors",
   },
 } as const;
 
@@ -172,9 +182,15 @@ function downscaleToJpeg(dataUrl: string, maxDim = 1024): Promise<string> {
 export function ProductTryon({
   product,
   locale = "fr",
+  selectedColor = null,
+  onColorChange,
 }: {
   product: CatalogProduct;
   locale?: Locale;
+  /** Coloris sélectionné sur la fiche (synchronisé avec l'essayage 3D). */
+  selectedColor?: string | null;
+  /** Remonte le choix fait dans l'essayage 3D vers la fiche produit. */
+  onColorChange?: (color: string) => void;
 }) {
   const s = STRINGS[locale] ?? STRINGS.fr;
 
@@ -182,6 +198,11 @@ export function ProductTryon({
   const [consented, setConsented] = useState(false);
   // Onglet actif : essayage caméra en direct, ou essayage statique sur photo.
   const [mode, setMode] = useState<"live" | "photo">("live");
+  // Essayage 3D : actif si le produit a un GLB et que WebGL/GLB n'a pas échoué.
+  const [threeFailed, setThreeFailed] = useState(false);
+  const use3d = Boolean(product.model3dUrl) && !threeFailed;
+  // Coloris choisi DANS l'essayage (pastilles) — sinon celui de la fiche.
+  const [tryonColor, setTryonColor] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [overlayLoading, setOverlayLoading] = useState(false);
   const [capture, setCapture] = useState<string | null>(null);
@@ -327,11 +348,37 @@ export function ProductTryon({
 
   const accept = useCallback(() => {
     setConsented(true);
-    if (!fetchedRef.current) {
-      fetchedRef.current = true;
-      void loadOverlay();
-    }
-  }, [loadOverlay]);
+  }, []);
+
+  // Façade 2D : générée UNIQUEMENT quand l'essayage 2D sert (pas de GLB, ou
+  // repli après un échec 3D) — aucun appel image inutile en mode 3D.
+  useEffect(() => {
+    if (!open || !consented || use3d || fetchedRef.current) return;
+    fetchedRef.current = true;
+    void loadOverlay();
+  }, [open, consented, use3d, loadOverlay]);
+
+  // Échec WebGL/GLB/contexte : bascule automatique et définitive vers le 2D.
+  const fail3d = useCallback(() => setThreeFailed(true), []);
+
+  // Coloris effectif de la monture 3D : le choix fait dans l'essayage prime ;
+  // sinon la sélection de la fiche, mais seulement si elle diffère du coloris
+  // par défaut (le GLB représente déjà le coloris par défaut — ne pas écraser
+  // ses textures sans raison). Hex inconnu → matériaux d'origine.
+  const activeColorName = tryonColor ?? selectedColor;
+  const frameColorHex = tryonColor
+    ? colorHex(tryonColor)
+    : selectedColor && selectedColor !== (product.colors[0] ?? null)
+      ? colorHex(selectedColor)
+      : null;
+
+  const pickColor = useCallback(
+    (c: string) => {
+      setTryonColor(c);
+      onColorChange?.(c);
+    },
+    [onColorChange]
+  );
 
   // ── Portrait porté photoréaliste ───────────────────────────────────────────
   // Photo source : la capture caméra si présente, sinon la photo téléversée.
@@ -432,6 +479,35 @@ export function ProductTryon({
     </>
   );
 
+  // Pastilles de couleurs sous la vue d'essayage 3D (barre style Zenni) :
+  // recolore le modèle GLB en direct et synchronise la sélection de la fiche.
+  const renderColorBar = () =>
+    use3d && product.colors.length > 0 ? (
+      <div
+        className="mx-auto mt-4 flex w-full max-w-xl items-center justify-center gap-3"
+        role="radiogroup"
+        aria-label={s.colorsLabel}
+      >
+        {product.colors.map((c) => (
+          <button
+            key={c}
+            type="button"
+            role="radio"
+            aria-checked={activeColorName === c}
+            aria-label={`${s.colorsLabel} : ${c}`}
+            title={c}
+            onClick={() => pickColor(c)}
+            className={`h-8 w-8 rounded-full ring-1 ring-black/10 transition-all ${
+              activeColorName === c
+                ? "ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                : "hover:scale-110"
+            }`}
+            style={{ backgroundColor: colorHex(c) ?? "#cccccc" }}
+          />
+        ))}
+      </div>
+    ) : null;
+
   return (
     <>
       <Button
@@ -515,12 +591,13 @@ export function ProductTryon({
                     ))}
                   </div>
                 </div>
-                {overlayLoading && (
+                {/* Avis façade 2D : sans objet quand le GLB 3D est utilisé. */}
+                {!use3d && overlayLoading && (
                   <p className="mb-4 text-center text-sm text-muted" role="status">
                     {s.preparing}
                   </p>
                 )}
-                {!overlayLoading && !overlay && (
+                {!use3d && !overlayLoading && !overlay && (
                   <p className="mb-4 text-center text-xs text-muted" role="status">
                     {s.unavailable}
                   </p>
@@ -548,15 +625,30 @@ export function ProductTryon({
                     </div>
                   ) : (
                     <div>
-                      <PhotoTryon
-                        photo={uploaded}
-                        frameSrc={overlay?.image}
-                        frameBg={overlay?.bg}
-                        widthAdjust={widthAdjust}
-                        heightAdjust={heightAdjust}
-                        locale={locale}
-                        slug={product.slug}
-                      />
+                      {use3d ? (
+                        /* Photo + GLB entier : une détection, une pose, un rendu. */
+                        <Tryon3DPhoto
+                          photo={uploaded}
+                          modelUrl={product.model3dUrl!}
+                          frameColor={frameColorHex}
+                          widthAdjust={widthAdjust}
+                          heightAdjust={heightAdjust}
+                          locale={locale}
+                          slug={product.slug}
+                          onFatal={fail3d}
+                        />
+                      ) : (
+                        <PhotoTryon
+                          photo={uploaded}
+                          frameSrc={overlay?.image}
+                          frameBg={overlay?.bg}
+                          widthAdjust={widthAdjust}
+                          heightAdjust={heightAdjust}
+                          locale={locale}
+                          slug={product.slug}
+                        />
+                      )}
+                      {renderColorBar()}
                       {renderSliders(s.adjustHintPhoto)}
                       <div className="mt-4 flex justify-center">
                         <Button
@@ -576,15 +668,30 @@ export function ProductTryon({
                         est instantané. Il est démonté (caméra coupée) à la
                         fermeture de la modale ou au passage à l'onglet photo. */}
                     <div className={capture ? "hidden" : undefined}>
-                      <FaceTryon
-                        frameSrc={overlay?.image}
-                        frameBg={overlay?.bg}
-                        loading={overlayLoading}
-                        onCapture={setCapture}
-                        locale={locale}
-                        widthAdjust={widthAdjust}
-                        heightAdjust={heightAdjust}
-                      />
+                      {use3d ? (
+                        /* Essayage 3D WebGL : GLB entier (façade + branches),
+                           occlusion crânienne, capture composite identique. */
+                        <Tryon3DLive
+                          modelUrl={product.model3dUrl!}
+                          frameColor={frameColorHex}
+                          onCapture={setCapture}
+                          onFatal={fail3d}
+                          locale={locale}
+                          widthAdjust={widthAdjust}
+                          heightAdjust={heightAdjust}
+                        />
+                      ) : (
+                        <FaceTryon
+                          frameSrc={overlay?.image}
+                          frameBg={overlay?.bg}
+                          loading={overlayLoading}
+                          onCapture={setCapture}
+                          locale={locale}
+                          widthAdjust={widthAdjust}
+                          heightAdjust={heightAdjust}
+                        />
+                      )}
+                      {renderColorBar()}
                       {renderSliders(s.adjustHint)}
                     </div>
                     {capture && (

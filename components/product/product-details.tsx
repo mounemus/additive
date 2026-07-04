@@ -149,8 +149,14 @@ export function ProductDetails({
         </Link>
       </div>
 
-      {/* Essayage virtuel en direct — disponible sur TOUTES les fiches. */}
-      <ProductTryon product={product} locale={locale} />
+      {/* Essayage virtuel en direct — disponible sur TOUTES les fiches.
+          Le coloris est synchronisé dans les deux sens avec l'essayage 3D. */}
+      <ProductTryon
+        product={product}
+        locale={locale}
+        selectedColor={selectedColor}
+        onColorChange={setSelectedColor}
+      />
 
       <div className="mt-10 space-y-6 border-t border-border pt-8">
         {product.materials.length > 0 && (
