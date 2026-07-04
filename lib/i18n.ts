@@ -172,12 +172,14 @@ export function localeAlternate(path: string): string {
 /* -------------------------------------------------------------------------- */
 
 type ManifestoBandCopy = {
+  eyebrow: string;
   lines: { t: string; accent?: boolean }[][];
   paragraph: string;
 };
 
 export const MANIFESTO_BAND_COPY: Record<Locale, ManifestoBandCopy> = {
   fr: {
+    eyebrow: "Le principe",
     lines: [
       [{ t: "Votre visage" }, { t: "n’est pas", accent: true }, { t: "standard." }],
       [{ t: "Vos lunettes" }, { t: "ne devraient", accent: true }, { t: "pas l’être." }],
@@ -186,6 +188,7 @@ export const MANIFESTO_BAND_COPY: Record<Locale, ManifestoBandCopy> = {
       "La fabrication additive nous libère des tailles uniques pensées pour personne. Chaque monture est imprimée à la demande, ajustée à une morphologie, accordée à un style — légère, précise, et seulement quand vous la voulez.",
   },
   en: {
+    eyebrow: "The principle",
     lines: [
       [{ t: "Your face" }, { t: "was never", accent: true }, { t: "standard." }],
       [{ t: "Your glasses" }, { t: "shouldn’t be", accent: true }, { t: "either." }],

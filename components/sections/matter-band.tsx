@@ -70,14 +70,22 @@ export function MatterBand({ locale = "fr" }: { locale?: Locale }) {
                   transition={{ repeat: Infinity, duration: 7, ease: "linear" }}
                 />
               )}
-              <span className="absolute bottom-4 left-5 font-mono text-[10px] uppercase tracking-[0.25em] text-white/70 mix-blend-difference">
-                {copy.layersNote}
-              </span>
+              {/* Légende technique — bandeau haut sur scrim, lisible en entier
+                  (hors de la zone du médaillon macro, bas-droit) */}
+              <div
+                aria-hidden
+                className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/65 via-black/30 to-transparent px-5 pb-10 pt-4"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/85">
+                  {copy.layersNote}
+                </span>
+              </div>
             </div>
 
-            {/* Macro matière en médaillon */}
+            {/* Macro matière en médaillon — ancré coin bas-droit, décalé vers
+                l'extérieur, détouré du panneau par un ring couleur fond */}
             <FadeIn delay={0.2} className="absolute -bottom-6 -right-4 hidden w-36 md:block lg:-right-8 lg:w-44">
-              <div className="overflow-hidden rounded-2xl border border-border shadow-card">
+              <div className="overflow-hidden rounded-2xl border border-border shadow-card ring-4 ring-background">
                 <Image
                   src="/images/editorial/macro-pa12.png"
                   alt={locale === "en" ? "PA12 sintered nylon, macro view" : "Nylon PA12 fritté, vue macro"}

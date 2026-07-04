@@ -85,7 +85,7 @@ export function HeroSection({
 
       <motion.div
         style={reduce ? undefined : { y: yTitle, opacity }}
-        className="container relative z-10 pt-28 md:pt-24"
+        className="container relative z-10 pb-28 pt-28 md:pb-32 md:pt-24"
       >
         <div className="grid items-end gap-10 lg:grid-cols-[1fr_auto]">
           {/* Colonne principale — titre monumental */}
