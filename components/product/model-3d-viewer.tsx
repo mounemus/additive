@@ -238,11 +238,28 @@ export function Model3DViewer({
             "camera-controls": true,
             ...(reducedMotion
               ? {}
-              : { "auto-rotate": true, "auto-rotate-delay": "1500", "rotation-per-second": "12deg" }),
+              : { "auto-rotate": true, "auto-rotate-delay": "1500", "rotation-per-second": "14deg" }),
             "interaction-prompt": "none",
-            "shadow-intensity": "0.85",
-            "shadow-softness": "0.9",
-            exposure: "1.05",
+            // ── Rendu qualité « photo produit » ──────────────────────────
+            // Environnement studio auto-hébergé (softboxes) → réflexions
+            // douces sur le nylon satiné ; ciel de fond gardé transparent.
+            "environment-image": "/env/studio.jpg",
+            // Khronos PBR Neutral : le tone-mapping conçu pour l'e-commerce
+            // (couleurs fidèles, pas de sur-saturation ni de highlights cramés).
+            "tone-mapping": "neutral",
+            exposure: "1",
+            // Ombre de contact douce sous la monture.
+            "shadow-intensity": "1.1",
+            "shadow-softness": "1",
+            // Objectif long (téléobjectif produit) : compresse la perspective,
+            // supprime la distorsion grand-angle sur les branches. Cadrage 3/4.
+            "field-of-view": "26deg",
+            "min-field-of-view": "18deg",
+            "max-field-of-view": "40deg",
+            "camera-orbit": "-22deg 76deg 105%",
+            "min-camera-orbit": "auto auto 88%",
+            "max-camera-orbit": "auto auto 150%",
+            "interpolation-decay": "160",
             ar: true,
             "ar-modes": "webxr scene-viewer quick-look",
             "ar-scale": "auto",
