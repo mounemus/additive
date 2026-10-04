@@ -50,8 +50,11 @@ const nextConfig = {
   // next-auth (client ET serveur) en déduit son basePath et l'origine publique.
   env: { NEXTAUTH_URL: `${PUBLIC_URL}/api/auth`, NEXT_PUBLIC_BASE_PATH: BASE_PATH },
   async redirects() {
-    // Accès direct à l'URL Vercel : la racine renvoie vers le site public.
-    return [{ source: "/", destination: PUBLIC_URL, basePath: false, permanent: false }];
+    // Accès direct à l'URL Vercel sans /additive (anciens liens) → même page sous le basePath.
+    // Jamais vers buypukka.ca : un ancien plugin WP qui redirige ici créerait une boucle.
+    return [
+      { source: "/:path((?!additive(?:/|$)).*)", destination: `${BASE_PATH}/:path`, basePath: false, permanent: false },
+    ];
   },
   images: {
     remotePatterns: [
