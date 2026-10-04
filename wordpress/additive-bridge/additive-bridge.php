@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Additive — Passerelle Vercel
  * Description: Sert le site Additive (Next.js sur Vercel) sous buypukka.ca/additive, intègre son back-office dans WordPress, synchronisation des commandes (→ WooCommerce) et des messages de contact, statuts renvoyés à Vercel.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: Additive
  * Requires PHP: 7.4
  */
@@ -117,10 +117,13 @@ function addb_proxy() {
 		}
 	}
 	// Cookies : uniquement ceux du site Next (jamais les cookies de session WordPress).
+	// Lus dans l'en-tête brut : $_COOKIE remplace les « . » des noms par « _ »
+	// (next-auth.session-token deviendrait next-auth_session-token → session perdue).
 	$cookies = array();
-	foreach ( $_COOKIE as $name => $value ) {
-		if ( is_string( $value ) && ! preg_match( '/^(wordpress|wp-|wp_|woocommerce|comment_author|PHPSESSID|_lscache)/i', $name ) ) {
-			$cookies[] = $name . '=' . rawurlencode( $value );
+	foreach ( explode( ';', isset( $_SERVER['HTTP_COOKIE'] ) ? $_SERVER['HTTP_COOKIE'] : '' ) as $pair ) {
+		$pair = trim( $pair );
+		if ( '' !== $pair && ! preg_match( '/^(wordpress|wp-|wp_|woocommerce|comment_author|PHPSESSID|_lscache)/i', $pair ) ) {
+			$cookies[] = $pair;
 		}
 	}
 	if ( $cookies ) {
