@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Additive — Passerelle Vercel
  * Description: Sert le site Additive (Next.js sur Vercel) sous buypukka.ca/additive, intègre son back-office dans WordPress, synchronisation des commandes (→ WooCommerce) et des messages de contact, statuts renvoyés à Vercel.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: Additive
  * Requires PHP: 7.4
  */
@@ -209,6 +209,22 @@ add_action( 'plugins_loaded', function () {
 /* ------------------------------------------------------------------ */
 /* 2. API Vercel                                                       */
 /* ------------------------------------------------------------------ */
+
+/**
+ * URL de connexion automatique au back-office Next pour l'admin WordPress courant.
+ * Jeton = base64url({email, exp}) . base64url(HMAC-SHA256 avec la clé partagée), valable 60 s.
+ * Sans clé configurée : lien direct (la page de connexion Next s'affichera).
+ */
+function addb_sso_url( $to ) {
+	$secret = addb_opt( 'secret' );
+	if ( ! $secret || ! current_user_can( 'manage_options' ) ) {
+		return home_url( $to );
+	}
+	$b64     = function ( $s ) { return rtrim( strtr( base64_encode( $s ), '+/', '-_' ), '=' ); };
+	$payload = $b64( wp_json_encode( array( 'email' => wp_get_current_user()->user_email, 'exp' => time() + 60 ) ) );
+	$token   = $payload . '.' . $b64( hash_hmac( 'sha256', $payload, $secret, true ) );
+	return home_url( '/api/integrations/wordpress/sso?' . http_build_query( array( 'token' => $token, 'to' => $to ) ) );
+}
 
 function addb_api( $method, $body = null ) {
 	$secret = addb_opt( 'secret' );
@@ -521,7 +537,7 @@ add_action( 'admin_menu', function () {
 	add_submenu_page( 'addb', 'Synchronisation', 'Synchronisation', 'manage_options', 'addb', 'addb_page' );
 	foreach ( ADDB_ADMIN_SCREENS as $slug => $label ) {
 		add_submenu_page( 'addb', $label, $label, 'manage_options', 'addb-' . $slug, function () use ( $slug, $label ) {
-			$src = home_url( '/admin/' . $slug );
+			$src = addb_sso_url( '/admin/' . $slug );
 			echo '<div class="wrap" style="margin:0"><h1 class="screen-reader-text">' . esc_html( $label ) . '</h1>'
 				. '<p style="margin:8px 0"><a href="' . esc_url( $src ) . '" target="_blank" rel="noopener">Ouvrir dans un nouvel onglet ↗</a></p>'
 				. '<iframe src="' . esc_url( $src ) . '" title="' . esc_attr( $label ) . '" style="width:100%;height:calc(100vh - 120px);border:1px solid #dcdcde;background:#fff"></iframe></div>';
