@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,7 @@ export function RevealImage({
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
         <Image
-          src={src}
+          src={withBase(src)}
           alt={alt}
           fill
           priority={priority}

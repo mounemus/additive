@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { Loader2, Save, CheckCircle2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export function ModulairConfigForm({ initial }: { initial: ModulairConfig }) {
     setSaving(true);
     setSaved(false);
     setError(null);
-    const res = await fetch("/api/admin/configurator/modulair", {
+    const res = await fetch(withBase("/api/admin/configurator/modulair"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cfg),

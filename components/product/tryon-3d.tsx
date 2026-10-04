@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -118,7 +119,7 @@ const glbCache = new Map<string, Promise<ArrayBuffer>>();
 function fetchGlb(url: string): Promise<ArrayBuffer> {
   let p = glbCache.get(url);
   if (!p) {
-    p = fetch(url).then((res) => {
+    p = fetch(withBase(url)).then((res) => {
       if (!res.ok) throw new Error(`glb ${res.status}`);
       return res.arrayBuffer();
     });
@@ -333,7 +334,7 @@ export class TryonEngine {
     const buffer = await fetchGlb(url);
     if (this.disposed) return;
     this.draco = new DRACOLoader();
-    this.draco.setDecoderPath("/draco/");
+    this.draco.setDecoderPath(withBase("/draco/"));
     const loader = new GLTFLoader();
     loader.setDRACOLoader(this.draco);
     const gltf = await new Promise<{ scene: THREE.Group }>((resolve, reject) => {

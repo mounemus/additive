@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -46,7 +47,7 @@ export function CollectionCard({
               className="relative h-full w-full"
             >
               <Image
-                src={collection.image}
+                src={withBase(collection.image)}
                 alt={collection.name}
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"

@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -54,7 +55,7 @@ export function HeroSection({
       {showVideo ? (
         <video
           className="absolute inset-0 h-full w-full object-cover"
-          src={videoSrc}
+          src={withBase(videoSrc)}
           autoPlay
           muted
           loop
@@ -65,7 +66,7 @@ export function HeroSection({
       ) : (
         <>
           <Image
-            src={posterSrc}
+            src={withBase(posterSrc)}
             alt=""
             fill
             priority

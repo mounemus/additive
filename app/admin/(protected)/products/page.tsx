@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import Image from "next/image";
 import { Plus, Star } from "lucide-react";
@@ -55,7 +56,7 @@ export default async function AdminProductsPage() {
                   <div className="relative h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-foreground/5">
                     {p.images[0] && (
                       <Image
-                        src={p.images[0].url}
+                        src={withBase(p.images[0].url)}
                         alt=""
                         fill
                         sizes="64px"

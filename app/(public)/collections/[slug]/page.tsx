@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, Check } from "lucide-react";
@@ -91,7 +92,7 @@ export default async function CollectionPage({
         <section className="pb-20">
           <div className="container">
             <RevealImage
-              src={collection.image}
+              src={withBase(collection.image)}
               alt={`Collection ${collection.name}`}
               className="aspect-[16/8] rounded-3xl"
               sizes="(max-width: 1320px) 100vw, 1320px"

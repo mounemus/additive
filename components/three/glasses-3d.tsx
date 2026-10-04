@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { Suspense, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
@@ -22,7 +23,7 @@ const MODEL_URL = "/models/hybride.glb";
  * scène restait NOIRE. Les fichiers vivent désormais dans /public/draco
  * (même origine : aucun changement de CSP nécessaire).
  */
-export const DRACO_DECODER_PATH = "/draco/";
+export const DRACO_DECODER_PATH = withBase("/draco/");
 
 /**
  * Matière « atelier » appliquée au modèle : le GLB d'origine est un plastique
@@ -66,7 +67,7 @@ export function applyNylonStudioMaterials(root: THREE.Object3D) {
 
 function Model({ progress, url }: { progress: MutableRefObject<number>; url: string }) {
   // 2e argument = chemin du décodeur Draco auto-hébergé (voir note ci-dessus).
-  const { scene } = useGLTF(url, DRACO_DECODER_PATH);
+  const { scene } = useGLTF(withBase(url), DRACO_DECODER_PATH);
   const ref = useRef<THREE.Group>(null);
 
   // useGLTF met la scène en cache et la PARTAGE entre consommateurs : on clone
@@ -150,4 +151,4 @@ export function Glasses3D({
   );
 }
 
-useGLTF.preload(MODEL_URL, DRACO_DECODER_PATH);
+useGLTF.preload(withBase(MODEL_URL), DRACO_DECODER_PATH);

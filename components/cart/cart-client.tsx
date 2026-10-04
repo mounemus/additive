@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -40,7 +41,7 @@ export function CartClient() {
   useEffect(() => {
     setItem(loadCartItem());
     setLoaded(true);
-    fetch("/api/configurator/config")
+    fetch(withBase("/api/configurator/config"))
       .then((r) => (r.ok ? r.json() : null))
       .then(setConfig)
       .catch(() => setConfig(null));
@@ -54,7 +55,7 @@ export function CartClient() {
     if (!item) return;
     setState("sending");
     try {
-      const res = await fetch("/api/customization", {
+      const res = await fetch(withBase("/api/customization"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -81,7 +82,7 @@ export function CartClient() {
     if (!item) return;
     setState("paying");
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch(withBase("/api/checkout"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +159,7 @@ export function CartClient() {
           <div className="flex items-start gap-5">
             {item.image && (
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-[#0a0a0a]">
-                <Image src={item.image} alt={item.conceptLabel} fill unoptimized className="object-cover" sizes="96px" />
+                <Image src={withBase(item.image)} alt={item.conceptLabel} fill unoptimized className="object-cover" sizes="96px" />
               </div>
             )}
             <div className="min-w-0">

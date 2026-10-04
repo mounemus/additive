@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { motion, useReducedMotion } from "framer-motion";
 import { FadeIn } from "@/components/motion/fade-in";
 import { RevealImage } from "@/components/motion/reveal-image";
@@ -59,7 +60,7 @@ export function ManifestoBand({ locale = "fr" }: { locale?: Locale }) {
             face à la colonne texte, centrée dans sa colonne. */}
         <Parallax amount={36} className="lg:justify-self-center lg:self-center">
           <RevealImage
-            src="/images/editorial/generative-form.png"
+            src={withBase("/images/editorial/generative-form.png")}
             alt="Forme générative paramétrique — ADDITIVE"
             className="aspect-[4/5] max-h-[32rem] w-full rounded-3xl lg:w-[26rem]"
             sizes="(max-width: 1024px) 100vw, 40vw"

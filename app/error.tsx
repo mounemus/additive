@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -30,7 +31,7 @@ export default function Error({
       </p>
       <div className="mt-8 flex gap-3">
         <Button onClick={reset}>Réessayer</Button>
-        <Button variant="outline" onClick={() => (window.location.href = "/")}>
+        <Button variant="outline" onClick={() => (window.location.href = withBase("/"))}>
           Retour à l&rsquo;accueil
         </Button>
       </div>

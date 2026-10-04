@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { safeQuery } from "@/lib/admin";
@@ -178,14 +179,14 @@ export default async function AdminRequestsPage({
                     <div>
                       <p className="mb-1 text-xs text-muted">Photo (temporaire)</p>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photoByToken.get(c.photoToken)!} alt="Photo client" className="h-28 w-28 rounded-lg border border-border object-cover" />
+                      <img src={withBase(photoByToken.get(c.photoToken)!)} alt="Photo client" className="h-28 w-28 rounded-lg border border-border object-cover" />
                     </div>
                   )}
                   {c.moodboardUrl && (
                     <div>
                       <p className="mb-1 text-xs text-muted">Moodboard</p>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.moodboardUrl} alt="Moodboard" className="h-28 w-40 rounded-lg border border-border object-cover" />
+                      <img src={withBase(c.moodboardUrl)} alt="Moodboard" className="h-28 w-40 rounded-lg border border-border object-cover" />
                     </div>
                   )}
                 </div>

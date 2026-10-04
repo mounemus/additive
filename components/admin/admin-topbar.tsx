@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export function AdminTopbar({ userName }: { userName: string }) {
         variant="ghost"
         size="sm"
         className="gap-2"
-        onClick={() => signOut({ callbackUrl: "/admin/login" })}
+        onClick={() => signOut({ callbackUrl: withBase("/admin/login") })}
       >
         <LogOut className="h-4 w-4" /> Déconnexion
       </Button>

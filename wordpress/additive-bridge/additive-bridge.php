@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Additive — Passerelle Vercel
- * Description: Pilote le site Additive hébergé sur Vercel depuis WordPress : redirection 301 du sous-site, synchronisation des commandes (→ WooCommerce) et des messages de contact, statuts renvoyés à Vercel.
- * Version: 1.1.0
+ * Description: Sert le site Additive (Next.js sur Vercel) sous buypukka.ca/additive, intègre son back-office dans WordPress, synchronisation des commandes (→ WooCommerce) et des messages de contact, statuts renvoyés à Vercel.
+ * Version: 1.2.0
  * Author: Additive
  * Requires PHP: 7.4
  */
@@ -32,10 +32,11 @@ function addb_url( $path = '' ) {
 }
 
 /* ------------------------------------------------------------------ */
-/* 1. Redirection 301 du front                                         */
+/* 1. Relais : buypukka.ca/additive/* → site Next.js sur Vercel        */
 /* ------------------------------------------------------------------ */
 
-function addb_redirect_map( $path ) {
+/** Anciennes URL WordPress/WooCommerce → pages Next (301, même domaine). */
+function addb_legacy_map( $path ) {
 	$path = '/' . trim( $path, '/' );
 
 	if ( preg_match( '#^/produit/lunettes-personnalisees-additive$#', $path ) ) {
@@ -48,37 +49,161 @@ function addb_redirect_map( $path ) {
 		$cat = in_array( $m[1], array( 'cyborg', 'cygnus', 'eclipso' ), true ) ? 'modulair' : $m[1];
 		return in_array( $cat, array( 'modulair', 'generative', 'hybride' ), true ) ? '/collections/' . $cat : '/collections';
 	}
-
 	$pages = array(
 		'/shop'       => '/produits',
 		'/boutique'   => '/produits',
 		'/collection' => '/collections',
-		'/cart'       => '/cart',
 		'/panier'     => '/cart',
 		'/my-account' => '/account',
-		'/about'      => '/about',
-		'/contact'    => '/contact',
 		'/contact-2'  => '/contact',
 	);
-	return isset( $pages[ $path ] ) ? $pages[ $path ] : '/';
+	return isset( $pages[ $path ] ) ? $pages[ $path ] : null;
 }
 
-add_action( 'template_redirect', function () {
-	if ( ! addb_opt( 'redirect' ) || is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+/** Chemins qui restent servis par WordPress lui-même. */
+function addb_is_wp_path( $rel ) {
+	return (bool) preg_match( '#^/(wp-admin|wp-login\.php|wp-json|wp-content|wp-includes|wp-cron\.php|xmlrpc\.php|wp-signup\.php|wp-activate\.php|wp-sitemap|feed)(/|$)#', $rel )
+		|| isset( $_GET['rest_route'] ) || isset( $_GET['wc-ajax'] ) || isset( $_GET['preview'] );
+}
+
+/** En-têtes de requête transmis à Vercel (le reste — cookies WP, host… — reste ici). */
+const ADDB_FWD_HEADERS = array(
+	'accept', 'accept-language', 'content-type', 'user-agent', 'range', 'if-none-match', 'if-modified-since',
+	'rsc', 'next-router-state-tree', 'next-router-prefetch', 'next-url', 'next-action', 'origin', 'referer',
+	'x-requested-with', 'stripe-signature',
+);
+
+/** En-têtes de réponse renvoyés au navigateur. */
+const ADDB_BACK_HEADERS = array(
+	'content-type', 'cache-control', 'location', 'content-range', 'accept-ranges', 'etag', 'last-modified',
+	'vary', 'x-nextjs-cache', 'x-action-redirect', 'x-action-revalidated', 'content-security-policy',
+	'x-frame-options', 'x-content-type-options', 'referrer-policy', 'permissions-policy', 'content-disposition',
+);
+
+function addb_proxy() {
+	$home = rtrim( (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ), '/' ); // "/additive"
+	$uri  = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/';
+	$path = (string) wp_parse_url( $uri, PHP_URL_PATH );
+	if ( '' === $home || 0 !== strpos( $path . '/', $home . '/' ) ) {
 		return;
 	}
-	// Les administrateurs connectés voient encore le WordPress (vérifications).
-	if ( current_user_can( 'manage_options' ) ) {
+	$rel = substr( $path, strlen( $home ) );
+	if ( '' === $rel ) {
+		$rel = '/';
+	}
+	if ( addb_is_wp_path( $rel ) ) {
 		return;
 	}
-	$home = rtrim( (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ), '/' );
-	$path = (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH );
-	if ( $home !== '' && strpos( $path, $home ) === 0 ) {
-		$path = substr( $path, strlen( $home ) );
+	$legacy = addb_legacy_map( $rel );
+	if ( $legacy ) {
+		header( 'Location: ' . $home . $legacy, true, 301 );
+		header( 'X-LiteSpeed-Cache-Control: no-cache' );
+		exit;
 	}
-	nocache_headers();
-	wp_redirect( addb_url( addb_redirect_map( $path ) ), 301, 'Additive' );
+
+	$method  = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( $_SERVER['REQUEST_METHOD'] ) : 'GET';
+	$query   = (string) wp_parse_url( $uri, PHP_URL_QUERY );
+	// "/additive/" → "/additive" (racine Next avec basePath, sans slash final).
+	$target  = untrailingslashit( addb_opt( 'url' ) ) . $home . ( '/' === $rel ? '' : $rel ) . ( '' !== $query ? '?' . $query : '' );
+	$headers = array();
+	foreach ( ADDB_FWD_HEADERS as $h ) {
+		$key = 'HTTP_' . strtoupper( str_replace( '-', '_', $h ) );
+		if ( 'content-type' === $h ) {
+			if ( isset( $_SERVER['CONTENT_TYPE'] ) ) {
+				$headers[] = 'Content-Type: ' . $_SERVER['CONTENT_TYPE'];
+			}
+		} elseif ( isset( $_SERVER[ $key ] ) ) {
+			$headers[] = $h . ': ' . $_SERVER[ $key ];
+		}
+	}
+	// Cookies : uniquement ceux du site Next (jamais les cookies de session WordPress).
+	$cookies = array();
+	foreach ( $_COOKIE as $name => $value ) {
+		if ( is_string( $value ) && ! preg_match( '/^(wordpress|wp-|wp_|woocommerce|comment_author|PHPSESSID|_lscache)/i', $name ) ) {
+			$cookies[] = $name . '=' . rawurlencode( $value );
+		}
+	}
+	if ( $cookies ) {
+		$headers[] = 'Cookie: ' . implode( '; ', $cookies );
+	}
+	// IP réelle du visiteur (anti-abus côté Next), prouvée par la clé partagée.
+	$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '';
+	if ( addb_opt( 'secret' ) && $ip ) {
+		$headers[] = 'x-additive-client-ip: ' . $ip;
+		$headers[] = 'x-additive-proxy: ' . addb_opt( 'secret' );
+	}
+	$headers[] = 'Expect:';
+
+	$back = array();
+	$ch   = curl_init( $target );
+	curl_setopt_array( $ch, array(
+		CURLOPT_CUSTOMREQUEST  => $method,
+		CURLOPT_NOBODY         => 'HEAD' === $method,
+		CURLOPT_HTTPHEADER     => $headers,
+		CURLOPT_RETURNTRANSFER => true,
+		CURLOPT_FOLLOWLOCATION => false,
+		CURLOPT_ENCODING       => '', // accepte gzip/br, renvoie décompressé
+		CURLOPT_CONNECTTIMEOUT => 10,
+		CURLOPT_TIMEOUT        => 150, // générations IA longues
+		CURLOPT_HEADERFUNCTION => function ( $c, $line ) use ( &$back ) {
+			if ( 0 === strpos( $line, 'HTTP/' ) ) {
+				$back = array(); // 100-continue / réponses intermédiaires
+			}
+			$parts = explode( ':', $line, 2 );
+			if ( 2 === count( $parts ) ) {
+				$back[] = array( strtolower( trim( $parts[0] ) ), trim( $parts[1] ) );
+			}
+			return strlen( $line );
+		},
+	) );
+	// ponytail: corps brut seulement — pas de multipart/form-data (le site Next n'en envoie pas).
+	if ( ! in_array( $method, array( 'GET', 'HEAD' ), true ) ) {
+		curl_setopt( $ch, CURLOPT_POSTFIELDS, file_get_contents( 'php://input' ) );
+	}
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 160 );
+	}
+	$body = curl_exec( $ch );
+	$code = (int) curl_getinfo( $ch, CURLINFO_RESPONSE_CODE );
+	curl_close( $ch );
+
+	if ( false === $body || ! $code ) {
+		status_header( 502 );
+		header( 'Content-Type: text/html; charset=utf-8' );
+		header( 'X-LiteSpeed-Cache-Control: no-cache' );
+		echo '<!doctype html><meta charset="utf-8"><title>Additive</title><p style="font-family:sans-serif;padding:3rem;text-align:center">Le site est momentanément indisponible. Merci de réessayer dans un instant.</p>';
+		exit;
+	}
+
+	$origin        = untrailingslashit( addb_opt( 'url' ) );
+	$public_origin = preg_replace( '#^(https?://[^/]+).*$#', '$1', home_url( '/' ) );
+	status_header( $code );
+	foreach ( $back as $pair ) {
+		list( $name, $value ) = $pair;
+		if ( 'set-cookie' === $name ) {
+			header( 'Set-Cookie: ' . $value, false );
+		} elseif ( in_array( $name, ADDB_BACK_HEADERS, true ) ) {
+			if ( 'location' === $name && 0 === strpos( $value, $origin ) ) {
+				$value = $public_origin . substr( $value, strlen( $origin ) );
+			}
+			header( $name . ': ' . $value, true );
+		}
+	}
+	// Cache LiteSpeed : fichiers versionnés de Next = immuables ; le reste jamais mis en cache ici.
+	$static = 0 === strpos( $rel, '/_next/static/' ) || preg_match( '#^/(images|videos|models|fonts)/#', $rel );
+	header( 'X-LiteSpeed-Cache-Control: ' . ( $static && 200 === $code ? 'public,max-age=31536000' : 'no-cache' ) );
+	if ( 'HEAD' !== $method ) {
+		echo $body;
+	}
 	exit;
+}
+
+// Le plus tôt possible (avant requête WP, thème et Flatsome).
+add_action( 'plugins_loaded', function () {
+	if ( ! addb_opt( 'redirect' ) || is_admin() || wp_doing_ajax() || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+		return;
+	}
+	addb_proxy();
 }, 0 );
 
 /* ------------------------------------------------------------------ */
@@ -93,12 +218,13 @@ function addb_api( $method, $body = null ) {
 	$args = array(
 		'method'  => $method,
 		'timeout' => 20,
+		'redirection' => 0,
 		'headers' => array( 'Authorization' => 'Bearer ' . $secret, 'Content-Type' => 'application/json' ),
 	);
 	if ( null !== $body ) {
 		$args['body'] = wp_json_encode( $body );
 	}
-	$res  = wp_remote_request( addb_url( '/api/integrations/wordpress' ), $args );
+	$res  = wp_remote_request( addb_url( '/additive/api/integrations/wordpress' ), $args );
 	if ( is_wp_error( $res ) ) {
 		return $res;
 	}
@@ -282,6 +408,7 @@ register_activation_hook( __FILE__, function () {
 	if ( ! wp_next_scheduled( ADDB_CRON ) ) {
 		wp_schedule_event( time() + 60, 'addb_15min', ADDB_CRON );
 	}
+	do_action( 'litespeed_purge_all' ); // anciennes pages WP en cache
 } );
 register_deactivation_hook( __FILE__, function () {
 	wp_clear_scheduled_hook( ADDB_CRON );
@@ -374,9 +501,32 @@ add_action( 'manage_' . ADDB_CPT . '_posts_custom_column', function ( $col, $id 
 /* 6. Tableau de bord « Additive »                                     */
 /* ------------------------------------------------------------------ */
 
+/** Écrans du back-office Next affichés dans WordPress (même domaine → iframe autorisée). */
+const ADDB_ADMIN_SCREENS = array(
+	'dashboard'        => 'Back-office',
+	'products'         => 'Produits',
+	'collections'      => 'Collections',
+	'content'          => 'Contenus',
+	'appearance'       => 'Couleurs & médias',
+	'media'            => 'Médiathèque',
+	'configurator'     => 'Configurateur IA',
+	'contact-requests' => 'Demandes',
+	'ai-costs'         => 'Coûts IA',
+	'audit'            => 'Journal',
+	'settings'         => 'Réglages du site',
+);
+
 add_action( 'admin_menu', function () {
 	add_menu_page( 'Additive', 'Additive', 'manage_options', 'addb', 'addb_page', 'dashicons-visibility', 3 );
-	add_submenu_page( 'addb', 'Tableau de bord', 'Tableau de bord', 'manage_options', 'addb', 'addb_page' );
+	add_submenu_page( 'addb', 'Synchronisation', 'Synchronisation', 'manage_options', 'addb', 'addb_page' );
+	foreach ( ADDB_ADMIN_SCREENS as $slug => $label ) {
+		add_submenu_page( 'addb', $label, $label, 'manage_options', 'addb-' . $slug, function () use ( $slug, $label ) {
+			$src = home_url( '/admin/' . $slug );
+			echo '<div class="wrap" style="margin:0"><h1 class="screen-reader-text">' . esc_html( $label ) . '</h1>'
+				. '<p style="margin:8px 0"><a href="' . esc_url( $src ) . '" target="_blank" rel="noopener">Ouvrir dans un nouvel onglet ↗</a></p>'
+				. '<iframe src="' . esc_url( $src ) . '" title="' . esc_attr( $label ) . '" style="width:100%;height:calc(100vh - 120px);border:1px solid #dcdcde;background:#fff"></iframe></div>';
+		} );
+	}
 } );
 
 add_action( 'admin_post_addb_save', function () {
@@ -416,7 +566,6 @@ function addb_hpos() {
 
 function addb_page() {
 	$last = get_option( 'addb_last_sync' );
-	$base = addb_url();
 	?>
 	<div class="wrap">
 		<h1>Additive — site Vercel</h1>
@@ -425,13 +574,10 @@ function addb_page() {
 
 		<h2>Gérer le site</h2>
 		<p>
-			<a class="button button-primary" target="_blank" rel="noopener" href="<?php echo esc_url( $base ); ?>">Voir le site</a>
-			<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( $base . '/admin/dashboard' ); ?>">Back-office Vercel</a>
-			<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( $base . '/admin/products' ); ?>">Produits</a>
-			<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( $base . '/admin/collections' ); ?>">Collections</a>
-			<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( $base . '/admin/content' ); ?>">Contenus</a>
-			<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( $base . '/admin/appearance' ); ?>">Couleurs & médias</a>
-			<a class="button" target="_blank" rel="noopener" href="<?php echo esc_url( $base . '/admin/configurator' ); ?>">Configurateur IA</a>
+			<a class="button button-primary" target="_blank" rel="noopener" href="<?php echo esc_url( home_url( '/' ) ); ?>">Voir le site</a>
+			<?php foreach ( ADDB_ADMIN_SCREENS as $slug => $label ) : ?>
+				<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=addb-' . $slug ) ); ?>"><?php echo esc_html( $label ); ?></a>
+			<?php endforeach; ?>
 		</p>
 
 		<h2>Synchronisation</h2>
@@ -456,7 +602,7 @@ function addb_page() {
 			<table class="form-table">
 				<tr><th>Adresse du site Vercel</th><td><input type="url" class="regular-text" name="url" value="<?php echo esc_attr( addb_opt( 'url' ) ); ?>"></td></tr>
 				<tr><th>Clé de synchronisation</th><td><input type="password" class="regular-text" name="secret" autocomplete="new-password" placeholder="<?php echo addb_opt( 'secret' ) ? '•••••••• (enregistrée — laisser vide pour conserver)' : 'Coller WP_SYNC_SECRET'; ?>"><p class="description">Même valeur que la variable <code>WP_SYNC_SECRET</code> du projet Vercel.</p></td></tr>
-				<tr><th>Redirection 301</th><td><label><input type="checkbox" name="redirect" value="1" <?php checked( addb_opt( 'redirect' ) ); ?>> Rediriger les visiteurs du sous-site vers le site Vercel</label><p class="description">Les administrateurs connectés voient toujours le WordPress.</p></td></tr>
+				<tr><th>Site public</th><td><label><input type="checkbox" name="redirect" value="1" <?php checked( addb_opt( 'redirect' ) ); ?>> Servir le site Vercel sous <?php echo esc_html( home_url( '/' ) ); ?></label><p class="description">Décoché : l'ancien site WordPress réapparaît.</p></td></tr>
 			</table>
 			<?php submit_button( 'Enregistrer' ); ?>
 		</form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -37,7 +38,7 @@ export function LookbookGallery() {
             aria-label={`Agrandir : ${shot.alt}`}
           >
             <Image
-              src={shot.src}
+              src={withBase(shot.src)}
               alt={shot.alt}
               fill
               unoptimized

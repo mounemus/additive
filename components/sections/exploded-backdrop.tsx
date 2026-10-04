@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import dynamic from "next/dynamic";
 
 const ExplodedScene = dynamic(
@@ -24,7 +25,7 @@ export function ExplodedBackdrop({
       {imageSrc && (
         <div
           className="absolute inset-0 bg-cover bg-center opacity-70"
-          style={{ backgroundImage: `url(${imageSrc})` }}
+          style={{ backgroundImage: `url(${withBase(imageSrc)})` }}
         />
       )}
       {/* Monture 3D éclatée par-dessus, faible opacité */}

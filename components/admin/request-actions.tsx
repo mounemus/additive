@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -25,7 +26,7 @@ export function RequestActions({
 
   async function update(next: { status?: string; note?: string }) {
     setBusy(true);
-    await fetch(`/api/admin/requests/${id}?kind=${kind}`, {
+    await fetch(withBase(`/api/admin/requests/${id}?kind=${kind}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

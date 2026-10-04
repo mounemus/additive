@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Image from "next/image";
 import { Component, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -14,7 +15,7 @@ export function GlassesFallback({ imageSrc = "/images/editorial/hero-frame.png" 
   return (
     <div aria-hidden className="relative h-full w-full overflow-hidden">
       <Image
-        src={imageSrc}
+        src={withBase(imageSrc)}
         alt=""
         fill
         sizes="100vw"

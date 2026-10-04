@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, ShieldOff } from "lucide-react";
@@ -29,7 +30,7 @@ export function TotpSetup({ enabled }: { enabled: boolean }) {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/admin/totp/setup", { method: "POST" });
+      const res = await fetch(withBase("/api/admin/totp/setup"), { method: "POST" });
       const data = await res.json();
       if (!res.ok || !data.secret) throw new Error();
       setSecret(data.secret);
@@ -46,7 +47,7 @@ export function TotpSetup({ enabled }: { enabled: boolean }) {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/admin/totp/verify", {
+      const res = await fetch(withBase("/api/admin/totp/verify"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, action }),

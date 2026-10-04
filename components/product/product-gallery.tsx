@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -67,9 +68,9 @@ export function ProductGallery({
         {current.kind === "3d" ? (
           <>
             <Model3DViewer
-              src={current.src}
+              src={withBase(current.src)}
               alt={`${name} — ${LABELS.tab3d[locale]}`}
-              poster={posterUrl}
+              poster={withBase(posterUrl)}
               locale={locale}
               frameColorHex={frameColorHex}
               className="absolute inset-0 h-full w-full"
@@ -89,7 +90,7 @@ export function ProductGallery({
               className="relative h-full w-full"
             >
               <Image
-                src={current.url}
+                src={withBase(current.url)}
                 alt={current.alt ?? `${name} — ${LABELS.view[locale]} ${active + 1}`}
                 fill
                 priority
@@ -127,7 +128,7 @@ export function ProductGallery({
                   <span className="text-[11px] font-medium tracking-wide">3D</span>
                 </span>
               ) : (
-                <Image src={view.url} alt="" fill sizes="96px" className="object-cover" />
+                <Image src={withBase(view.url)} alt="" fill sizes="96px" className="object-cover" />
               )}
             </button>
           ))}

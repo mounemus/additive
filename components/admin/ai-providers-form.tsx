@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { Loader2, Save, KeyRound, CheckCircle2, XCircle, FlaskConical, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ export function AiProvidersForm({ initial }: { initial: Status }) {
   async function testKey(id: string) {
     const key = keys[id] || "••••";
     setTests((t) => ({ ...t, [id]: "loading" }));
-    const res = await fetch("/api/admin/configurator/providers/test", {
+    const res = await fetch(withBase("/api/admin/configurator/providers/test"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ providerId: id, key }),
@@ -70,7 +71,7 @@ export function AiProvidersForm({ initial }: { initial: Status }) {
   async function save() {
     setSaving(true);
     setSaved(false);
-    const res = await fetch("/api/admin/configurator/providers", {
+    const res = await fetch(withBase("/api/admin/configurator/providers"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tasks, keys }),

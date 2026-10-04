@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
+import { PUBLIC_URL } from "@/lib/base-path";
 
 export const SITE_NAME = "ADDITIVE";
 
-function sanitizeUrl(raw: string | undefined): string {
-  const fallback = "http://localhost:3000";
-  if (!raw) return fallback;
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  try {
-    new URL(trimmed);
-    return trimmed;
-  } catch {
-    return fallback;
-  }
-}
-
-export const SITE_URL = sanitizeUrl(process.env.NEXT_PUBLIC_SITE_URL);
+/** URL canonique publique, basePath inclus (https://buypukka.ca/additive). */
+export const SITE_URL = PUBLIC_URL;
 
 const DEFAULT_DESCRIPTION =
   "ADDITIVE — Lunetterie modulaire imprimée en 3D à Montréal. Des lunettes générées pour votre visage, imprimées pour votre style. Design paramétrique, nylon PA12, personnalisation morphologique.";
@@ -26,7 +16,7 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
-    url: "https://additive-blue.vercel.app",
+    url: SITE_URL,
     logo: `${SITE_URL}/logo.svg`,
     address: {
       "@type": "PostalAddress",
@@ -124,7 +114,8 @@ export function buildMetadata({
       siteName: SITE_NAME,
       locale: locale === "en" ? "en_CA" : "fr_CA",
       type: "website",
-      ...(image ? { images: [{ url: image }] } : {}),
+      // Absolu : metadataBase porte /additive, qu'une URL "/x" résolue écraserait.
+      ...(image ? { images: [{ url: image.startsWith("/") ? `${SITE_URL}${image}` : image }] } : {}),
     },
     twitter: {
       card: "summary_large_image",

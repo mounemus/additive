@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import { Store, Boxes, Sparkles } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -45,7 +46,7 @@ export default function RetailersPage() {
       <section className="pb-16">
         <div className="container">
           <RevealImage
-            src="/images/editorial/matter-band.png"
+            src={withBase("/images/editorial/matter-band.png")}
             alt="Collection de montures ADDITIVE pour détaillants"
             className="aspect-[16/7] rounded-3xl"
             sizes="(max-width: 1320px) 100vw, 1320px"

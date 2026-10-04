@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ export function CustomizationSteps({
         <FadeIn delay={0.15} className="mt-12 hidden lg:block">
           <div className="relative overflow-hidden rounded-3xl">
             <RevealImage
-              src="/images/editorial/exploded-modulair.png"
+              src={withBase("/images/editorial/exploded-modulair.png")}
               alt={copy.imageAlt}
               className="aspect-[21/9]"
               sizes="(max-width: 1400px) 90vw, 1272px"

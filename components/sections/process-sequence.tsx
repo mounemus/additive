@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { ScanFace, PenTool, Layers, Sparkles, Glasses } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -36,12 +37,12 @@ export function ProcessSequence({
       <div
         aria-hidden
         className="absolute inset-0 bg-cover bg-center opacity-45"
-        style={{ backgroundImage: "url(/images/bg/matter-neutral.png)" }}
+        style={{ backgroundImage: `url(${withBase("/images/bg/matter-neutral.png")})` }}
       />
       {showVideo && (
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-40"
-          src={videoSrc}
+          src={withBase(videoSrc)}
           autoPlay
           muted
           loop

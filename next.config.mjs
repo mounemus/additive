@@ -24,7 +24,8 @@ const csp = [
   "connect-src 'self' data: blob: https://cdn.jsdelivr.net https://storage.googleapis.com https://www.gstatic.com https://*.public.blob.vercel-storage.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
-  "frame-ancestors 'none'",
+  // 'self' = buypukka.ca : l'admin s'affiche dans le menu WordPress (même domaine).
+  "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
 ].join("; ");
@@ -32,14 +33,26 @@ const csp = [
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // La caméra est nécessaire au scan facial (même origine uniquement).
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+// Servi sous https://buypukka.ca/additive par le relais WordPress.
+// Doit rester identique à BASE_PATH (lib/base-path.ts).
+const BASE_PATH = "/additive";
+const PUBLIC_URL = `https://buypukka.ca${BASE_PATH}`;
+
 const nextConfig = {
+  basePath: BASE_PATH,
+  // next-auth (client ET serveur) en déduit son basePath et l'origine publique.
+  env: { NEXTAUTH_URL: `${PUBLIC_URL}/api/auth`, NEXT_PUBLIC_BASE_PATH: BASE_PATH },
+  async redirects() {
+    // Accès direct à l'URL Vercel : la racine renvoie vers le site public.
+    return [{ source: "/", destination: PUBLIC_URL, basePath: false, permanent: false }];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },

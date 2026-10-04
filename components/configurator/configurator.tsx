@@ -19,6 +19,7 @@
  * Confidentialité d'abord ; aucun nom de fournisseur d'IA exposé.
  */
 
+import { withBase } from "@/lib/base-path";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -181,7 +182,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
 
   // ── Chargement de la config publique ──────────────────────────────────────
   useEffect(() => {
-    fetch("/api/configurator/config")
+    fetch(withBase("/api/configurator/config"))
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setConfig)
       .catch(() => setConfig(null));
@@ -198,7 +199,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
   // ── Analyse : rapport de chausse après scan ───────────────────────────────
   const onScanComplete = useCallback((result: ScanResult) => {
     setScan(result);
-    fetch("/api/configurator/analysis-report", {
+    fetch(withBase("/api/configurator/analysis-report"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ measurements: result.measurements ?? {}, faceShape: result.faceShape }),
@@ -214,7 +215,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     if (step !== "moodboard" || moodboardDone.current || !profile.length) return;
     moodboardDone.current = true;
     setMoodboardLoading(true);
-    fetch("/api/configurator/moodboard", {
+    fetch(withBase("/api/configurator/moodboard"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ styleTags: profile, faceShape: scan?.faceShape }),
@@ -233,7 +234,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
       conceptsDone.current = true;
       setConceptsLoading(true);
       setSelected(null);
-      fetch("/api/configurator/concepts", {
+      fetch(withBase("/api/configurator/concepts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -267,7 +268,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     if (step !== "quote" || !selected) return;
     let cancelled = false;
     setQuoteLoading(true);
-    fetch("/api/configurator/quote", {
+    fetch(withBase("/api/configurator/quote"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conceptLabel: selected.label, boldness, ...opts }),
@@ -306,7 +307,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
       overlayForRef.current = concept.id;
       setOverlay(null);
       setOverlayLoading(true);
-      fetch("/api/configurator/frame-overlay", {
+      fetch(withBase("/api/configurator/frame-overlay"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conceptLabel: concept.label, styleTags: profile, conceptImage: concept.image }),
@@ -349,7 +350,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
     if (!photo || !selected) return;
     setPortraitLoading(true);
     setPortraitError(null);
-    fetch("/api/configurator/tryon-portrait", {
+    fetch(withBase("/api/configurator/tryon-portrait"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -372,14 +373,14 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
       let photoToken: string | undefined;
       const photoToAttach = portrait || snapshot || scan?.photoDataUrl;
       if (attachPhoto && photoToAttach) {
-        const pr = await fetch("/api/configurator/photo", {
+        const pr = await fetch(withBase("/api/configurator/photo"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ dataUrl: photoToAttach, kind: portrait ? "portrait" : "snapshot" }),
         });
         if (pr.ok) photoToken = (await pr.json()).token;
       }
-      const res = await fetch("/api/customization", {
+      const res = await fetch(withBase("/api/customization"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -582,7 +583,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                   {scan?.photoDataUrl && (
                     <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-border">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={scan.photoDataUrl} alt="Votre capture" className="h-full w-full -scale-x-100 object-cover" />
+                      <img src={withBase(scan.photoDataUrl)} alt="Votre capture" className="h-full w-full -scale-x-100 object-cover" />
                     </div>
                   )}
                 </div>
@@ -656,7 +657,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                       onClick={() => setLightbox(moodboard.image)}
                       className="group relative block aspect-[3/2] w-full overflow-hidden rounded-2xl border border-border"
                     >
-                      <Image src={moodboard.image} alt="Moodboard" fill unoptimized className="object-cover transition-transform group-hover:scale-105" sizes="(max-width:1024px) 100vw, 60vw" />
+                      <Image src={withBase(moodboard.image)} alt="Moodboard" fill unoptimized className="object-cover transition-transform group-hover:scale-105" sizes="(max-width:1024px) 100vw, 60vw" />
                       <span className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs text-white">Agrandir</span>
                     </button>
                   ) : null}
@@ -720,7 +721,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                       )}
                     >
                       <div className="relative aspect-square bg-[#0a0a0a]">
-                        <Image src={c.image} alt={c.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 33vw" />
+                        <Image src={withBase(c.image)} alt={c.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 33vw" />
                         <span className="absolute left-3 top-3 rounded-full bg-accent-blue px-2.5 py-1 text-xs font-medium text-white">{c.matchRate}% match</span>
                       </div>
                       <div className="flex flex-1 flex-col p-5">
@@ -750,7 +751,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                 <div>
                   {tryonMode === "studio" ? (
                     <button onClick={() => setLightbox(selected.image)} className="relative block aspect-square w-full overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
-                      <Image src={selected.image} alt={selected.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                      <Image src={withBase(selected.image)} alt={selected.label} fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
                     </button>
                   ) : (
                     <FaceTryon
@@ -773,7 +774,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                     {portrait ? (
                       <>
                         <button onClick={() => setLightbox(portrait)} className="relative mt-4 block aspect-square w-full overflow-hidden rounded-xl border border-border">
-                          <Image src={portrait} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                          <Image src={withBase(portrait)} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
                         </button>
                         <Button variant="outline" size="sm" onClick={generatePortrait} disabled={portraitLoading} className="mt-3 gap-2">
                           <RefreshCw className={cn("h-4 w-4", portraitLoading && "animate-spin")} /> Régénérer le portrait
@@ -800,7 +801,7 @@ export function Configurator({ baseModel }: { baseModel?: string }) {
                       <p className="eyebrow mb-2 flex items-center gap-1.5"><Camera className="h-3.5 w-3.5" /> Essayage capturé</p>
                       <button onClick={() => setLightbox(snapshot)} className="relative block aspect-video w-full overflow-hidden rounded-xl">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={snapshot} alt="Essayage capturé" className="h-full w-full object-cover" />
+                        <img src={withBase(snapshot)} alt="Essayage capturé" className="h-full w-full object-cover" />
                       </button>
                     </div>
                   )}

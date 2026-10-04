@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { Box, ImageOff, Loader2, Scan } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -207,7 +208,7 @@ export function Model3DViewer({
           /* URL du poster potentiellement hors des domaines next/image configurés. */
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={poster}
+            src={withBase(poster)}
             alt={alt}
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -230,9 +231,9 @@ export function Model3DViewer({
           "model-viewer",
           {
             ref: viewerRef,
-            src,
+            src: withBase(src),
             alt,
-            poster,
+            poster: withBase(poster),
             reveal: "auto",
             loading: "eager",
             "camera-controls": true,
@@ -243,7 +244,7 @@ export function Model3DViewer({
             // ── Rendu qualité « photo produit » ──────────────────────────
             // Environnement studio auto-hébergé (softboxes) → réflexions
             // douces sur le nylon satiné ; ciel de fond gardé transparent.
-            "environment-image": "/env/studio.jpg",
+            "environment-image": withBase("/env/studio.jpg"),
             // Khronos PBR Neutral : le tone-mapping conçu pour l'e-commerce
             // (couleurs fidèles, pas de sur-saturation ni de highlights cramés).
             "tone-mapping": "neutral",
@@ -288,7 +289,7 @@ export function Model3DViewer({
             /* Même raison que le repli : URL hors config next/image possible. */
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={poster}
+              src={withBase(poster)}
               alt=""
               aria-hidden
               className="absolute inset-0 h-full w-full object-cover opacity-60"

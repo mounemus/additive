@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -46,7 +47,7 @@ export function ModulairSection({
               {showVideo ? (
                 <video
                   className="absolute inset-0 h-full w-full object-cover"
-                  src={videoSrc}
+                  src={withBase(videoSrc)}
                   autoPlay
                   muted
                   loop
@@ -56,7 +57,7 @@ export function ModulairSection({
                 />
               ) : (
                 <Image
-                  src="/images/editorial/exploded-modulair.png"
+                  src={withBase("/images/editorial/exploded-modulair.png")}
                   alt={copy.videoNote}
                   fill
                   sizes="(max-width: 1024px) 100vw, 55vw"

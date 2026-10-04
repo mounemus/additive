@@ -49,9 +49,21 @@ export async function rateLimit(
 
 /** IP du client derrière le proxy Vercel. */
 export function clientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
+  return clientIpFrom((name) => req.headers.get(name));
+}
+
+/**
+ * Derrière le relais WordPress (buypukka.ca/additive), toutes les requêtes
+ * arrivent de l'IP du serveur WP : on prend alors l'IP réelle transmise par
+ * le plugin, uniquement s'il prouve son identité avec WP_SYNC_SECRET.
+ */
+export function clientIpFrom(get: (name: string) => string | null | undefined): string {
+  const secret = process.env.WP_SYNC_SECRET;
+  const relayed = get("x-additive-client-ip");
+  if (secret && relayed && get("x-additive-proxy") === secret) return relayed.trim();
+  const fwd = get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
+  return get("x-real-ip") ?? "unknown";
 }
 
 /**

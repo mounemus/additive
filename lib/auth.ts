@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, clientIpFrom } from "@/lib/rate-limit";
 import { open } from "@/lib/secret-box";
 import { verifyTotp } from "@/lib/totp";
 
@@ -22,8 +22,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         // Anti brute-force : 5 tentatives / 15 min par IP+email.
-        const fwd = (req?.headers?.["x-forwarded-for"] as string | undefined) ?? "unknown";
-        const ip = fwd.split(",")[0].trim();
+        const ip = clientIpFrom((name) => req?.headers?.[name] as string | undefined);
         const email = credentials.email.toLowerCase().trim();
         const rl = await rateLimit("login", `${ip}:${email}`, 5, 900);
         if (!rl.ok) return null;

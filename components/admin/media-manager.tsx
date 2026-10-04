@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,7 +34,7 @@ export function MediaManager({ assets }: { assets: Asset[] }) {
   const [copied, setCopied] = useState<string | null>(null);
 
   async function addAsset(url: string, assetKind?: string) {
-    const res = await fetch("/api/admin/media", {
+    const res = await fetch(withBase("/api/admin/media"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, kind: assetKind ?? kind }),
@@ -44,7 +45,7 @@ export function MediaManager({ assets }: { assets: Asset[] }) {
 
   async function removeAsset(id: string) {
     if (!confirm("Supprimer ce média de la bibliothèque ?")) return;
-    await fetch(`/api/admin/media/${id}`, { method: "DELETE" });
+    await fetch(withBase(`/api/admin/media/${id}`), { method: "DELETE" });
     router.refresh();
   }
 
@@ -96,7 +97,7 @@ export function MediaManager({ assets }: { assets: Asset[] }) {
                   </div>
                 ) : (
                   <Image
-                    src={a.url}
+                    src={withBase(a.url)}
                     alt={a.alt ?? ""}
                     fill
                     sizes="(max-width: 1024px) 50vw, 25vw"

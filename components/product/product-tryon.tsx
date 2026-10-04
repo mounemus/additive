@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, ImageDown, Loader2, RotateCcw, Sparkles, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -142,7 +143,7 @@ function shortHash(input: string): string {
 function absoluteImageUrl(raw: string): string | undefined {
   if (!raw) return undefined;
   if (/^(https?:)?\/\//.test(raw) || raw.startsWith("data:")) return raw;
-  return `${window.location.origin}${raw.startsWith("/") ? "" : "/"}${raw}`;
+  return `${window.location.origin}${withBase(raw.startsWith("/") ? raw : `/${raw}`)}`;
 }
 
 // Redimensionne une image (data URL) à 1024 px max côté client, en JPEG :
@@ -313,7 +314,7 @@ export function ProductTryon({
       // L'API exige une URL exploitable côté serveur : absolutise l'image
       // produit si elle est relative (ex. /uploads/….jpg).
       const conceptImage = absoluteImageUrl(product.image || "");
-      const res = await fetch("/api/configurator/frame-overlay", {
+      const res = await fetch(withBase("/api/configurator/frame-overlay"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -418,7 +419,7 @@ export function ProductTryon({
     cooldownTimerRef.current = setTimeout(() => setRegenCooldown(false), 15_000);
     try {
       const photo = await downscaleToJpeg(source);
-      const res = await fetch("/api/configurator/tryon-portrait", {
+      const res = await fetch(withBase("/api/configurator/tryon-portrait"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -700,12 +701,12 @@ export function ProductTryon({
                         suffit, next/image n'apporte rien ici. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={capture}
+                      src={withBase(capture)}
                       alt={s.captureAlt}
                       className="mx-auto w-full max-w-xl rounded-2xl border border-border"
                     />
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
-                      <a href={capture} download={`essayage-${product.slug}.jpg`}>
+                      <a href={withBase(capture)} download={`essayage-${product.slug}.jpg`}>
                         <Button className="gap-2">
                           <ImageDown className="h-4 w-4" />
                           {s.download}
@@ -748,12 +749,12 @@ export function ProductTryon({
                       <div className="mt-4">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={portrait}
+                          src={withBase(portrait)}
                           alt={s.portraitAlt}
                           className="mx-auto w-full max-w-xl rounded-2xl border border-border"
                         />
                         <div className="mt-4 flex flex-wrap justify-center gap-3">
-                          <a href={portrait} download={`portrait-${product.slug}.jpg`}>
+                          <a href={withBase(portrait)} download={`portrait-${product.slug}.jpg`}>
                             <Button className="gap-2">
                               <ImageDown className="h-4 w-4" />
                               {s.download}

@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -117,7 +118,7 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
     setError(null);
     try {
       const res = await fetch(
-        productId ? `/api/admin/products/${productId}` : "/api/admin/products",
+        withBase(productId ? `/api/admin/products/${productId}` : "/api/admin/products"),
         {
           method: productId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -403,7 +404,7 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
                 >
                   <GripVertical className="h-4 w-4 shrink-0 text-muted" />
                   <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-foreground/5">
-                    <Image src={img.url} alt={img.alt ?? ""} fill className="object-cover" sizes="80px" />
+                    <Image src={withBase(img.url)} alt={img.alt ?? ""} fill className="object-cover" sizes="80px" />
                   </div>
                   <Input
                     value={img.alt ?? ""}
@@ -449,7 +450,7 @@ export function ProductForm({ collections, productId, initial }: ProductFormProp
           <MediaUploader onUploaded={(url) => set("model3dUrl", url)} />
           {state.model3dUrl ? (
             <Model3DViewer
-              src={state.model3dUrl}
+              src={withBase(state.model3dUrl)}
               alt="Aperçu 3D"
               className="aspect-video w-full overflow-hidden rounded-xl border border-border"
             />

@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import {
@@ -115,7 +116,7 @@ export function MediaUploader({
     try {
       const blob = await upload(file.name, file, {
         access: "public",
-        handleUploadUrl: "/api/admin/media/upload",
+        handleUploadUrl: withBase("/api/admin/media/upload"),
         contentType: file.type || (isGlbFile(file) ? "model/gltf-binary" : undefined),
         onUploadProgress: ({ percentage }) => {
           patchItem(id, { progress: Math.round(percentage) });
@@ -144,7 +145,7 @@ export function MediaUploader({
         // rejeté par le serveur. On distingue via la session NextAuth.
         message = "Le serveur a refusé le téléversement (type ou taille du fichier).";
         try {
-          const s = await fetch("/api/auth/session").then((r) => r.json());
+          const s = await fetch(withBase("/api/auth/session")).then((r) => r.json());
           if (!s?.user) message = "Session expirée : reconnectez-vous à l'admin.";
         } catch {
           /* on garde le message générique */

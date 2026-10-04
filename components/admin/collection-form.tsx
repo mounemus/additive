@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -46,9 +47,9 @@ export function CollectionForm({
     setError(null);
     try {
       const res = await fetch(
-        collectionId
+        withBase(collectionId
           ? `/api/admin/collections/${collectionId}`
-          : "/api/admin/collections",
+          : "/api/admin/collections"),
         {
           method: collectionId ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },

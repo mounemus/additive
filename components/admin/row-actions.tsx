@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -25,7 +26,7 @@ export function RowActions({
 
   async function togglePublish() {
     setBusy(true);
-    await fetch(`/api/admin/${resource}/${id}`, {
+    await fetch(withBase(`/api/admin/${resource}/${id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPublished: !isPublished }),
@@ -37,7 +38,7 @@ export function RowActions({
   async function remove() {
     if (!confirm(`Supprimer définitivement ${deleteLabel} ?`)) return;
     setBusy(true);
-    await fetch(`/api/admin/${resource}/${id}`, { method: "DELETE" });
+    await fetch(withBase(`/api/admin/${resource}/${id}`), { method: "DELETE" });
     router.refresh();
     setBusy(false);
   }

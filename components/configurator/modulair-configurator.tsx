@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -61,7 +62,7 @@ export function ModulairConfigurator() {
 
   // Config administrable (libellés + prix des éléments de combinaison).
   useEffect(() => {
-    fetch("/api/configurator/modulair-config")
+    fetch(withBase("/api/configurator/modulair-config"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setCfg(d))
       .catch(() => {});
@@ -74,7 +75,7 @@ export function ModulairConfigurator() {
   // Devis serveur à chaque changement.
   useEffect(() => {
     let cancel = false;
-    fetch("/api/configurator/modulair-quote", {
+    fetch(withBase("/api/configurator/modulair-quote"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: selKey,
@@ -97,7 +98,7 @@ export function ModulairConfigurator() {
 
   const generateRender = useCallback(() => {
     setRenderLoading(true);
-    fetch("/api/configurator/modulair-render", {
+    fetch(withBase("/api/configurator/modulair-render"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: selKey,
@@ -108,7 +109,7 @@ export function ModulairConfigurator() {
         setTab("render");
         // Pré-génère la façade AR conditionnée sur le rendu.
         setOverlayLoading(true);
-        return fetch("/api/configurator/frame-overlay", {
+        return fetch(withBase("/api/configurator/frame-overlay"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ conceptLabel: LABEL, conceptSummary: summary, conceptImage: d.image, styleTags: [] }),
@@ -127,7 +128,7 @@ export function ModulairConfigurator() {
     if (!photo) return;
     setPortraitLoading(true);
     setPortraitError(null);
-    fetch("/api/configurator/tryon-portrait", {
+    fetch(withBase("/api/configurator/tryon-portrait"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conceptLabel: LABEL, conceptSummary: summary, photo, conceptImage: render ?? undefined, styleTags: [] }),
@@ -148,14 +149,14 @@ export function ModulairConfigurator() {
       let photoToken: string | undefined;
       const toAttach = portrait || photo;
       if (toAttach) {
-        const pr = await fetch("/api/configurator/photo", {
+        const pr = await fetch(withBase("/api/configurator/photo"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ dataUrl: toAttach, kind: portrait ? "portrait" : "capture" }),
         });
         if (pr.ok) photoToken = (await pr.json()).token;
       }
-      const res = await fetch("/api/customization", {
+      const res = await fetch(withBase("/api/customization"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -210,7 +211,7 @@ export function ModulairConfigurator() {
             <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
               {render ? (
                 <button onClick={() => setLightbox(render)} className="block h-full w-full">
-                  <Image src={render} alt="Rendu studio" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                  <Image src={withBase(render)} alt="Rendu studio" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
                 </button>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center text-white/60">
@@ -277,7 +278,7 @@ export function ModulairConfigurator() {
           ) : portrait ? (
             <div className="mt-5 space-y-3">
               <button onClick={() => setLightbox(portrait)} className="relative block aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-border">
-                <Image src={portrait} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+                <Image src={withBase(portrait)} alt="Portrait porté" fill unoptimized className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
               </button>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={generatePortrait} disabled={portraitLoading} className="gap-2">

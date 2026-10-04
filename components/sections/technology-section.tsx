@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import { Printer, Atom, GitBranch, PackageCheck, Recycle, Puzzle } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -27,7 +28,7 @@ export function TechnologySection({
       <div
         aria-hidden
         className="absolute inset-0 bg-cover bg-center opacity-60"
-        style={{ backgroundImage: "url(/images/bg/tech-neutral.png)" }}
+        style={{ backgroundImage: `url(${withBase("/images/bg/tech-neutral.png")})` }}
       />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-[#0b0d10] via-[#0b0d10]/55 to-[#0b0d10]" />
       <div className="container relative">

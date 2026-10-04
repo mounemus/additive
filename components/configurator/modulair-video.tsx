@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/motion/fade-in";
@@ -18,7 +19,7 @@ export function ModulairVideo({
 }) {
   return (
     <video
-      src={src}
+      src={withBase(src)}
       autoPlay
       loop
       muted

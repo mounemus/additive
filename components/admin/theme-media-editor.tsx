@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save, Check, RotateCcw } from "lucide-react";
@@ -22,7 +23,7 @@ function useSaver(key: string) {
   const [state, setState] = useState<SaveState>("idle");
   async function save(value: unknown) {
     setState("saving");
-    const res = await fetch("/api/admin/content", {
+    const res = await fetch(withBase("/api/admin/content"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value }),

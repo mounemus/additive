@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Image from "next/image";
 import { Feather, Shield, Recycle } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -31,7 +32,7 @@ export function MatterBand({ locale = "fr" }: { locale?: Locale }) {
           <div className="relative">
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-surface">
               <Image
-                src="/images/editorial/matter-band.png"
+                src={withBase("/images/editorial/matter-band.png")}
                 alt={
                   locale === "en"
                     ? "3D-printed frame samples, PA12 nylon — ADDITIVE"
@@ -91,7 +92,7 @@ export function MatterBand({ locale = "fr" }: { locale?: Locale }) {
               <FadeIn delay={0.2} className="w-40">
                 <div className="overflow-hidden rounded-2xl border border-border shadow-card ring-4 ring-background">
                   <Image
-                    src="/images/editorial/macro-pa12.png"
+                    src={withBase("/images/editorial/macro-pa12.png")}
                     alt={locale === "en" ? "PA12 sintered nylon, macro view" : "Nylon PA12 fritté, vue macro"}
                     width={352}
                     height={352}

@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Loader2, ImageDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -477,7 +478,7 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = reject;
-    img.src = src;
+    img.src = withBase(src);
   });
 }
 

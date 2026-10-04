@@ -1,4 +1,5 @@
 import "server-only";
+import { PUBLIC_URL } from "@/lib/base-path";
 
 /**
  * E-mails transactionnels via l'API Resend (simple POST, pas de SDK).
@@ -146,7 +147,7 @@ export function atelierNotificationEmail(data: {
       data.kind === "paiement" ? "Acompte reçu" : "Nouvelle demande",
       `<table style="border-collapse:collapse">${rows}</table>
       ${data.message ? `<p style="font-size:13px;line-height:1.6;margin:14px 0 0;white-space:pre-wrap">${data.message}</p>` : ""}
-      <p style="font-size:13px;margin:16px 0 0"><a href="https://additive-blue.vercel.app/admin/contact-requests" style="color:#1557ff">Ouvrir dans l'admin →</a></p>`
+      <p style="font-size:13px;margin:16px 0 0"><a href="${PUBLIC_URL}/admin/contact-requests" style="color:#1557ff">Ouvrir dans l'admin →</a></p>`
     ),
   };
 }

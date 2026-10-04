@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
@@ -48,7 +49,7 @@ export function ProductCard({
       <Link href={href} className="focus-ring block rounded-2xl">
         <div className="relative aspect-[4/3] overflow-hidden bg-[#0a0a0a]">
           <Image
-            src={product.image}
+            src={withBase(product.image)}
             alt={product.images[0]?.alt ?? product.name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

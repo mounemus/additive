@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { FadeIn } from "@/components/motion/fade-in";
@@ -45,7 +46,7 @@ export function ManifestoSection() {
 
           <Parallax amount={40}>
             <RevealImage
-              src="/images/editorial/macro-pa12.png"
+              src={withBase("/images/editorial/macro-pa12.png")}
               alt="Macro de la surface nylon PA12 imprimée — ADDITIVE"
               className="aspect-[4/5] rounded-3xl"
             />

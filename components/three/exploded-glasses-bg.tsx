@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { Suspense, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment, Lightformer, AdaptiveDpr } from "@react-three/drei";
@@ -15,7 +16,7 @@ const MODEL_URL = "/models/hybride.glb";
  */
 function ExplodedModel({ modelUrl }: { modelUrl: string }) {
   // Décodeur Draco auto-hébergé (la CSP bloque gstatic — voir glasses-3d.tsx).
-  const { scene } = useGLTF(modelUrl, DRACO_DECODER_PATH);
+  const { scene } = useGLTF(withBase(modelUrl), DRACO_DECODER_PATH);
   const group = useRef<THREE.Group>(null);
 
   // Clone : useGLTF partage la scène en cache. Comme on mute les positions des
@@ -90,4 +91,4 @@ export function ExplodedScene({ modelUrl = MODEL_URL }: { modelUrl?: string }) {
   );
 }
 
-useGLTF.preload(MODEL_URL, DRACO_DECODER_PATH);
+useGLTF.preload(withBase(MODEL_URL), DRACO_DECODER_PATH);

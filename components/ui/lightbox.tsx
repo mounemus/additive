@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,7 +53,7 @@ export function Lightbox({
             className="relative max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl"
           >
             <Image
-              src={src}
+              src={withBase(src)}
               alt={alt}
               width={1536}
               height={1024}

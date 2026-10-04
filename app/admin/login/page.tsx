@@ -1,5 +1,6 @@
 "use client";
 
+import { BASE_PATH } from "@/lib/base-path";
 import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -29,7 +30,10 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.ok) {
-      router.push(params.get("callbackUrl") ?? "/admin/dashboard");
+      // next-auth (middleware) inclut le basePath dans callbackUrl ; router.push le
+      // rajoute lui-même → on le retire pour éviter /additive/additive/….
+      const cb = params.get("callbackUrl") ?? "/admin/dashboard";
+      router.push(cb.startsWith(`${BASE_PATH}/`) ? cb.slice(BASE_PATH.length) : cb);
       router.refresh();
     } else {
       setError("Identifiants invalides.");

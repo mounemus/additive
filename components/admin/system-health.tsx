@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useEffect, useState, useCallback } from "react";
 import { Activity, Database, Sparkles, Inbox, ImageIcon, RefreshCw, Loader2 } from "lucide-react";
 
@@ -24,7 +25,7 @@ export function SystemHealth() {
 
   const refresh = useCallback(() => {
     setLoading(true);
-    fetch("/api/admin/configurator/health")
+    fetch(withBase("/api/admin/configurator/health"))
       .then((r) => (r.ok ? r.json() : null))
       .then(setHealth)
       .finally(() => setLoading(false));

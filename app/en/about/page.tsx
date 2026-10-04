@@ -1,3 +1,4 @@
+import { withBase } from "@/lib/base-path";
 import { MapPin, Factory, Users, Store } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "@/components/motion/fade-in";
 import { AnimatedText } from "@/components/motion/animated-text";
@@ -66,7 +67,7 @@ export default function EnglishAboutPage() {
       <section className="pb-20">
         <div className="container">
           <RevealImage
-            src="/images/collections/hybride.svg"
+            src={withBase("/images/collections/hybride.svg")}
             alt="ADDITIVE workshop — additive manufacturing in Montréal"
             className="aspect-[16/7] rounded-3xl"
             sizes="(max-width: 1320px) 100vw, 1320px"

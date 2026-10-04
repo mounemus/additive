@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PUBLIC_URL } from "@/lib/base-path";
 import Stripe from "stripe";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -82,7 +83,6 @@ export async function POST(req: Request) {
     });
 
     const stripe = new Stripe(stripeKey);
-    const origin = new URL(req.url).origin;
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: parsed.data.email,
@@ -100,8 +100,8 @@ export async function POST(req: Request) {
         },
       ],
       metadata: { requestId: request.id },
-      success_url: `${origin}/merci?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/cart?paiement=annule`,
+      success_url: `${PUBLIC_URL}/merci?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${PUBLIC_URL}/cart?paiement=annule`,
     });
 
     return NextResponse.json({ ok: true, url: session.url, requestId: request.id });

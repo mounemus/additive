@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { t, type Locale } from "@/lib/i18n";
@@ -13,7 +14,7 @@ export function NewsletterForm({ locale = "fr" }: { locale?: Locale }) {
     if (!email) return;
     setState("loading");
     try {
-      const res = await fetch("/api/newsletter", {
+      const res = await fetch(withBase("/api/newsletter"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

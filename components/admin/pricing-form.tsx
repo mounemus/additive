@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/base-path";
 import { useState } from "react";
 import { Loader2, Save, CheckCircle2, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export function PricingForm({ initial }: { initial: PricingConfig }) {
     setSaving(true);
     setSaved(false);
     setError(null);
-    const res = await fetch("/api/admin/configurator/pricing", {
+    const res = await fetch(withBase("/api/admin/configurator/pricing"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cfg),
