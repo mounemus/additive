@@ -49,3 +49,9 @@ yarn-error.log*
 .env*
 
 wordpress/*.zip
+
+# Rangement 2026-10-13 (hors dépôt)
+/_medias/
+/_releases/
+/_corbeille/
+/_secrets_a_supprimer/
